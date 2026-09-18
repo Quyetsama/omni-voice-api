@@ -1,0 +1,95 @@
+# ==========================================
+# macOS System Files
+# ==========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ==========================================
+# Python & Virtual Environments
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================================
+# Logs & Process Files
+# ==========================================
+*.log
+nohup.out
+server.log
+
+# ==========================================
+# Audio Outputs & Samples (Tệp âm thanh tạm / sinh ra)
+# ==========================================
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+
+# ==========================================
+# Saved Voices & Models (Giọng đã clone & Trọng số mô hình)
+# Bỏ comment dòng dưới nếu bạn KHÔNG muốn đẩy giọng cá nhân lên Git:
+saved_voices/*.pt
+!saved_voices/.gitkeep
+
+# Checkpoint / Trọng số mô hình nặng
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# Ngoại lệ: giữ lại thư mục saved_voices
+!saved_voices/
+
+# ==========================================
+# Environment & Secrets (Biến môi trường)
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ==========================================
+# IDEs & Code Editors
+# ==========================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# ==========================================
+# Temporary Files
+# ==========================================
+tmp/
+temp/
+.cache/

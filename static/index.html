@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniVoice Studio - Local TTS & Voice Cloning</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse-loading { animation: pulse-subtle 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP NAVBAR -->
+  <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <i data-lucide="waves" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+              OmniVoice Studio
+            </h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">Local API</span>
+          </div>
+          <p class="text-xs text-slate-400">Zero-Shot TTS & Voice Cloning 600+ Ngôn ngữ</p>
+        </div>
+      </div>
+
+      <!-- Server Status Badge -->
+      <div class="flex items-center space-x-3 text-xs">
+        <div id="statusBadge" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium transition-all">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <span id="statusText">Đang kiểm tra kết nối...</span>
+        </div>
+        <a href="/docs" target="_blank" class="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/60">
+          <i data-lucide="code-2" class="w-3.5 h-3.5"></i>
+          <span>Swagger API</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-6">
+    <div class="flex border-b border-slate-800 space-x-2 sm:space-x-4">
+      <button onclick="switchTab('tts')" id="tabBtn-tts" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center space-x-2 transition-all">
+        <i data-lucide="volume-2" class="w-4 h-4"></i>
+        <span>Đọc Văn Bản (TTS)</span>
+      </button>
+      <button onclick="switchTab('voices')" id="tabBtn-voices" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition-all">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span>Kho Giọng & Cache</span>
+        <span id="voiceCountBadge" class="ml-1.5 px-1.5 py-0.2 rounded-full bg-slate-800 text-xs text-indigo-300">0</span>
+      </button>
+      <button onclick="switchTab('directClone')" id="tabBtn-directClone" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition-all">
+        <i data-lucide="mic-2" class="w-4 h-4"></i>
+        <span>Clone Nhanh (Upload Trực Tiếp)</span>
+      </button>
+      <button onclick="switchTab('api')" id="tabBtn-api" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition-all">
+        <i data-lucide="terminal" class="w-4 h-4"></i>
+        <span>Mã Gọi API</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 flex-1">
+
+    <!-- ==================== TAB 1: ĐỌC VĂN BẢN (TTS) ==================== -->
+    <div id="tab-tts" class="tab-pane space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Input text & Voice settings -->
+        <div class="lg:col-span-7 space-y-5">
+          <!-- Voice Mode Selector -->
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Chế độ giọng đọc</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="setTTSMode('cached')" id="btnModeCached" class="mode-btn p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <i data-lucide="database" class="w-4 h-4"></i>
+                <span>Giọng Cache Đã Lưu</span>
+              </button>
+              <button type="button" onclick="setTTSMode('design')" id="btnModeDesign" class="mode-btn p-3 rounded-xl border border-slate-800 bg-slate-800/40 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all hover:border-slate-700">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+                <span>Voice Design</span>
+              </button>
+              <button type="button" onclick="setTTSMode('auto')" id="btnModeAuto" class="mode-btn p-3 rounded-xl border border-slate-800 bg-slate-800/40 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all hover:border-slate-700">
+                <i data-lucide="shuffle" class="w-4 h-4"></i>
+                <span>Auto (Ngẫu nhiên)</span>
+              </button>
+            </div>
+
+            <!-- Mode 1: Cached Voice Dropdown -->
+            <div id="sectionCachedVoice" class="mt-4">
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs text-slate-300 font-medium">Chọn giọng trong Cache:</label>
+                <button type="button" onclick="refreshVoiceList()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                  <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                  <span>Làm mới</span>
+                </button>
+              </div>
+              <select id="ttsVoiceSelect" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="">-- Chọn giọng mẫu --</option>
+              </select>
+              <p class="text-xs text-slate-500 mt-1.5 flex items-center space-x-1">
+                <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                <span>Chưa có giọng nào? Hãy sang tab <a href="javascript:switchTab('voices')" class="text-indigo-400 underline">Kho Giọng & Cache</a> để tạo.</span>
+              </p>
+            </div>
+
+            <!-- Mode 2: Voice Design Options -->
+            <div id="sectionVoiceDesign" class="mt-4 space-y-3 hidden">
+              <label class="text-xs text-slate-300 font-medium">Tùy biến thuộc tính giọng:</label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase">Giới tính</span>
+                  <select id="vdGender" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 mt-1">
+                    <option value="female">Nữ (Female)</option>
+                    <option value="male">Nam (Male)</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase">Độ tuổi</span>
+                  <select id="vdAge" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 mt-1">
+                    <option value="young adult">Thanh niên (Young adult)</option>
+                    <option value="middle-aged">Trung niên (Middle-aged)</option>
+                    <option value="child">Trẻ em (Child)</option>
+                    <option value="elderly">Người già (Elderly)</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase">Cao độ (Pitch)</span>
+                  <select id="vdPitch" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 mt-1">
+                    <option value="moderate pitch">Vừa (Moderate)</option>
+                    <option value="high pitch">Cao (High)</option>
+                    <option value="low pitch">Trầm (Low)</option>
+                    <option value="very high pitch">Rất cao (Very High)</option>
+                    <option value="very low pitch">Rất trầm (Very Low)</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase">Phong cách / Accent</span>
+                  <select id="vdStyle" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 mt-1">
+                    <option value="">Bình thường</option>
+                    <option value="whisper">Thì thầm (Whisper)</option>
+                    <option value="british accent">British accent</option>
+                    <option value="american accent">American accent</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Input Area -->
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Văn bản cần đọc</label>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-[11px] text-slate-500">Chèn biểu cảm:</span>
+                <button type="button" onclick="insertTag('[laughter]')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">😂 Cười</button>
+                <button type="button" onclick="insertTag('[sigh]')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">😮‍💨 Thở dài</button>
+              </div>
+            </div>
+
+            <textarea id="ttsTextInput" rows="5" placeholder="Nhập đoạn văn bản bạn muốn chuyển thành giọng nói tại đây (Hỗ trợ tiếng Việt, tiếng Anh và 600+ ngôn ngữ khác)..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-y">Xin chào! Đây là hệ thống tạo giọng nói OmniVoice chạy hoàn toàn trên máy cục bộ của bạn.</textarea>
+
+            <!-- Parameters (Speed, Steps, Language) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
+              <div>
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Tốc độ đọc</span>
+                  <span id="speedVal" class="text-indigo-400 font-semibold">1.0x</span>
+                </div>
+                <input id="ttsSpeed" type="range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="document.getElementById('speedVal').innerText = this.value + 'x'" class="w-full accent-indigo-500 cursor-pointer">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Độ chi tiết (Steps)</span>
+                  <span id="stepVal" class="text-indigo-400 font-semibold">32</span>
+                </div>
+                <select id="ttsSteps" onchange="document.getElementById('stepVal').innerText = this.value" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+                  <option value="32" selected>32 bước (Chất lượng cao)</option>
+                  <option value="16">16 bước (Nhanh gấp đôi)</option>
+                </select>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Ngôn ngữ</span>
+                </div>
+                <select id="ttsLang" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+                  <option value="">Tự động nhận diện</option>
+                  <option value="vi" selected>Tiếng Việt (vi)</option>
+                  <option value="en">English (en)</option>
+                  <option value="zh">Chinese (zh)</option>
+                  <option value="ja">Japanese (ja)</option>
+                  <option value="ko">Korean (ko)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Submit button -->
+            <button id="btnGenerateTTS" onclick="generateTTS()" class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
+              <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+              <span>Tạo Giọng Nói Ngay</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Player & Generation History -->
+        <div class="lg:col-span-5 space-y-5">
+          <!-- Active Result Card -->
+          <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between min-h-[220px]">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                  <i data-lucide="disc" class="w-4 h-4 text-indigo-400"></i>
+                  <span>Kết Quả Âm Thanh</span>
+                </h3>
+                <span id="genTimerBadge" class="text-xs text-slate-500 hidden"></span>
+              </div>
+
+              <div id="playerEmptyState" class="py-8 text-center text-slate-500 space-y-2">
+                <i data-lucide="audio-lines" class="w-10 h-10 mx-auto stroke-1 opacity-50"></i>
+                <p class="text-xs">Chưa có âm thanh được tạo. Nhấn "Tạo Giọng Nói" để bắt đầu.</p>
+              </div>
+
+              <div id="playerActiveState" class="space-y-4 hidden">
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
+                  <p id="currentPlayingText" class="text-xs text-slate-300 italic line-clamp-2">"..."</p>
+                </div>
+                <audio id="mainAudioPlayer" controls class="w-full h-10 rounded-lg outline-none"></audio>
+                <div class="flex items-center justify-between pt-1">
+                  <span id="audioSpecs" class="text-[11px] text-slate-400">24 kHz WAV • Local</span>
+                  <a id="downloadAudioBtn" href="#" download="omnivoice_output.wav" class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-medium border border-indigo-500/20 transition-all">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Tải về WAV</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History List -->
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Lịch sử phiên này</h4>
+              <button onclick="clearHistory()" class="text-[11px] text-slate-500 hover:text-rose-400 transition-colors">Xóa hết</button>
+            </div>
+            <div id="historyList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+              <p class="text-xs text-slate-500 text-center py-4">Chưa có lịch sử</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 2: KHO GIỌNG & CACHE (VOICE LIBRARY) ==================== -->
+    <div id="tab-voices" class="tab-pane space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Form tạo giọng cache mới -->
+        <div class="lg:col-span-5 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i>
+              <span>Thêm & Cache Giọng Mẫu Mới</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Tải file audio mẫu 1 lần (3-10 giây) để trích xuất profile giọng và lưu vào bộ nhớ cache.</p>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Mã định danh giọng (Voice ID) *</label>
+              <input id="createVoiceId" type="text" placeholder="vd: giong_mc_nam, chi_hang, voice_en_1" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <span class="text-[10px] text-slate-500">Chỉ dùng chữ cái, số, gạch dưới. Không có dấu cách.</span>
+            </div>
+
+            <!-- Upload Audio File -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">File âm thanh mẫu (WAV, MP3...) *</label>
+              <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-950/50" onclick="document.getElementById('createVoiceFile').click()">
+                <i data-lucide="upload-cloud" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
+                <p id="fileLabel" class="text-xs text-slate-300 font-medium">Nhấp để chọn file hoặc kéo thả vào đây</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">Khuyên dùng đoạn 3 - 10 giây giọng sạch</p>
+                <input id="createVoiceFile" type="file" accept="audio/*" class="hidden" onchange="handleVoiceFileSelected(this)">
+              </div>
+              <audio id="createAudioPreview" controls class="w-full mt-2 hidden h-9"></audio>
+            </div>
+
+            <!-- Reference Text (Optional) -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Nội dung câu nói trong file mẫu (Tùy chọn)</label>
+              <input id="createVoiceRefText" type="text" placeholder="Bỏ trống để mô hình tự động nhận diện bằng Whisper..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <button id="btnCreateVoice" onclick="submitCreateVoice()" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-600/20 flex items-center justify-center space-x-2 transition-all">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Lưu & Mã Hóa Giọng Vào Cache</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Danh sách giọng đã lưu trong Cache -->
+        <div class="lg:col-span-7 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <i data-lucide="hard-drive" class="w-4 h-4 text-purple-400"></i>
+                <span>Danh Sách Giọng Đã Cache</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">Các giọng này đã được lưu trong thư mục <code class="text-indigo-300">saved_voices/</code></p>
+            </div>
+            <button onclick="loadVoicesList()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center space-x-1">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <div id="voiceCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+            <div class="col-span-full py-8 text-center text-slate-500">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto stroke-1 opacity-50 mb-1"></i>
+              <p class="text-xs">Đang tải danh sách giọng...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 3: CLONE TRỰC TIẾP (QUICK CLONE) ==================== -->
+    <div id="tab-directClone" class="tab-pane space-y-6 hidden">
+      <div class="max-w-2xl mx-auto bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-5">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i>
+            <span>Clone Giọng Trực Tiếp (1 Lần Dùng)</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">Dùng khi bạn chỉ muốn thử nhanh một file audio mẫu cùng câu văn mà không cần lưu vào thư viện cache.</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">File âm thanh mẫu *</label>
+            <input id="directAudioFile" type="file" accept="audio/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-500/10 file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Văn bản cần đọc *</label>
+            <textarea id="directText" rows="3" placeholder="Nhập câu muốn giọng mẫu nói..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none">Xin chào, đây là tính năng nhân bản giọng nói trực tiếp từ file mẫu.</textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Transcript của file mẫu (Tùy chọn)</label>
+            <input id="directRefText" type="text" placeholder="Bỏ trống để Whisper tự nhận diện..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+
+          <button id="btnDirectClone" onclick="submitDirectClone()" class="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white rounded-xl font-semibold text-sm shadow-md flex items-center justify-center space-x-2">
+            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+            <span>Clone & Phát Âm Thanh</span>
+          </button>
+
+          <div id="directCloneResult" class="hidden pt-4 border-t border-slate-800 space-y-2">
+            <span class="text-xs text-slate-400">Kết quả:</span>
+            <audio id="directAudioPlayer" controls class="w-full"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 4: MÃ GỌI API ==================== -->
+    <div id="tab-api" class="tab-pane space-y-6 hidden">
+      <div class="max-w-4xl mx-auto space-y-5">
+        <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-3">
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <i data-lucide="code" class="w-5 h-5 text-indigo-400"></i>
+            <span>Cách Tích Hợp API Vào Ứng Dụng Của Bạn</span>
+          </h3>
+          <p class="text-xs text-slate-400">Vì giọng đã được lưu trong cache, bạn chỉ cần gửi request HTTP POST cực nhẹ kèm <code class="text-indigo-300 font-mono">voice_id</code> là có thể nhận về file âm thanh.</p>
+        </div>
+
+        <!-- Code Snippet: Python -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300 flex items-center space-x-2">
+              <i data-lucide="file-code" class="w-4 h-4 text-emerald-400"></i>
+              <span>Python (requests)</span>
+            </span>
+            <button onclick="copyCode('codePython')" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codePython">import requests
+
+# 1. Sinh âm thanh bằng giọng đã lưu trong Cache
+response = requests.post(
+    "http://localhost:8000/tts",
+    json={
+        "text": "Xin chào thế giới!",
+        "voice_id": "giong_mc_nam", # Thay bằng voice_id của bạn
+        "speed": 1.0
+    }
+)
+
+with open("output.wav", "wb") as f:
+    f.write(response.content)
+print("Đã lưu file output.wav!")</code></pre>
+        </div>
+
+        <!-- Code Snippet: JavaScript / Fetch -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300 flex items-center space-x-2">
+              <i data-lucide="file-code" class="w-4 h-4 text-amber-400"></i>
+              <span>JavaScript / Node.js (Fetch)</span>
+            </span>
+            <button onclick="copyCode('codeJS')" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codeJS">async function playSpeech(text, voiceId = "giong_mc_nam") {
+  const res = await fetch("http://localhost:8000/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice_id: voiceId, speed: 1.0 })
+  });
+  const blob = await res.blob();
+  const audio = new Audio(URL.createObjectURL(blob));
+  audio.play();
+}
+
+playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
+        </div>
+
+        <!-- Code Snippet: cURL -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300 flex items-center space-x-2">
+              <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i>
+              <span>cURL (Terminal)</span>
+            </span>
+            <button onclick="copyCode('codeCurl')" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codeCurl">curl -X POST http://localhost:8000/tts \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Xin chào từ cURL!", "voice_id": "giong_mc_nam"}' \
+  --output ket_qua.wav</code></pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 max-w-sm p-4 rounded-xl shadow-2xl text-xs flex items-center space-x-3 pointer-events-none">
+    <i id="toastIcon" data-lucide="info" class="w-5 h-5 flex-shrink-0"></i>
+    <span id="toastMsg" class="font-medium"></span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentTTSMode = 'cached';
+    let availableVoices = [];
+    let generationHistory = [];
+
+    // Khởi tạo icon
+    lucide.createIcons();
+
+    // Healthcheck ban đầu
+    async function checkHealth() {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        const badge = document.getElementById('statusBadge');
+        const txt = document.getElementById('statusText');
+        if (data.status === 'ok' && data.model_loaded) {
+          badge.className = 'flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium';
+          txt.innerHTML = 'Model Sẵn Sàng (MPS/Local)';
+        } else {
+          txt.innerText = 'Đang nạp mô hình...';
+        }
+      } catch (e) {
+        document.getElementById('statusBadge').className = 'flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium';
+        document.getElementById('statusText').innerText = 'Không thể kết nối Server';
+      }
+    }
+
+    // Chuyển Tab
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-indigo-500', 'text-indigo-400');
+        btn.classList.add('border-transparent', 'text-slate-400');
+      });
+
+      const pane = document.getElementById('tab-' + tabId);
+      const btn = document.getElementById('tabBtn-' + tabId);
+      if (pane) pane.classList.remove('hidden');
+      if (btn) {
+        btn.classList.remove('border-transparent', 'text-slate-400');
+        btn.classList.add('border-indigo-500', 'text-indigo-400');
+      }
+
+      if (tabId === 'voices') loadVoicesList();
+    }
+
+    // Chọn chế độ TTS
+    function setTTSMode(mode) {
+      currentTTSMode = mode;
+      const cachedSec = document.getElementById('sectionCachedVoice');
+      const designSec = document.getElementById('sectionVoiceDesign');
+
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.className = 'mode-btn p-3 rounded-xl border border-slate-800 bg-slate-800/40 text-slate-400 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all hover:border-slate-700';
+      });
+
+      if (mode === 'cached') {
+        document.getElementById('btnModeCached').className = 'mode-btn p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all';
+        cachedSec.classList.remove('hidden');
+        designSec.classList.add('hidden');
+      } else if (mode === 'design') {
+        document.getElementById('btnModeDesign').className = 'mode-btn p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all';
+        cachedSec.classList.add('hidden');
+        designSec.classList.remove('hidden');
+      } else {
+        document.getElementById('btnModeAuto').className = 'mode-btn p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all';
+        cachedSec.classList.add('hidden');
+        designSec.classList.add('hidden');
+      }
+    }
+
+    // Chèn tag biểu cảm
+    function insertTag(tag) {
+      const textarea = document.getElementById('ttsTextInput');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + tag + ' ' + text.substring(end);
+      textarea.focus();
+    }
+
+    // Tải danh sách giọng
+    async function loadVoicesList() {
+      try {
+        const res = await fetch('/voices');
+        availableVoices = await res.json();
+        renderVoiceDropdown();
+        renderVoiceCards();
+        document.getElementById('voiceCountBadge').innerText = availableVoices.length;
+      } catch (e) {
+        showToast('Lỗi khi tải danh sách giọng', 'error');
+      }
+    }
+
+    function refreshVoiceList() {
+      loadVoicesList();
+      showToast('Đã làm mới danh sách giọng', 'info');
+    }
+
+    function renderVoiceDropdown() {
+      const sel = document.getElementById('ttsVoiceSelect');
+      sel.innerHTML = '<option value="">-- Chọn giọng mẫu --</option>';
+      availableVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.innerText = '🎙️ ' + v;
+        sel.appendChild(opt);
+      });
+      if (availableVoices.length > 0 && !sel.value) {
+        sel.value = availableVoices[0];
+      }
+    }
+
+    function renderVoiceCards() {
+      const container = document.getElementById('voiceCardsContainer');
+      if (!availableVoices || availableVoices.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-8 text-center text-slate-500 space-y-1">
+            <i data-lucide="mic-off" class="w-8 h-8 mx-auto opacity-40"></i>
+            <p class="text-xs">Chưa có giọng nào được lưu trong Cache.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = availableVoices.map(v => `
+        <div class="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between hover:border-slate-700 transition-all">
+          <div class="flex items-center space-x-3 overflow-hidden">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="volume-2" class="w-4 h-4"></i>
+            </div>
+            <div class="truncate">
+              <h4 class="text-xs font-semibold text-slate-200 truncate">${v}</h4>
+              <span class="text-[10px] text-emerald-400 flex items-center space-x-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Cached (.pt)</span>
+              </span>
+            </div>
+          </div>
+          <div class="flex items-center space-x-1 flex-shrink-0">
+            <button onclick="selectVoiceForTTS('${v}')" title="Dùng giọng này" class="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors">
+              <i data-lucide="play-circle" class="w-4 h-4"></i>
+            </button>
+            <button onclick="deleteVoice('${v}')" title="Xóa giọng này" class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function selectVoiceForTTS(voiceId) {
+      switchTab('tts');
+      setTTSMode('cached');
+      document.getElementById('ttsVoiceSelect').value = voiceId;
+      showToast(`Đã chọn giọng '${voiceId}'`, 'success');
+    }
+
+    async function deleteVoice(voiceId) {
+      if (!confirm(`Bạn có chắc muốn xóa giọng '${voiceId}' khỏi cache không?`)) return;
+      try {
+        const res = await fetch(`/voices/${voiceId}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast(`Đã xóa giọng '${voiceId}'`, 'success');
+          loadVoicesList();
+        } else {
+          showToast('Xóa giọng thất bại', 'error');
+        }
+      } catch (e) {
+        showToast('Lỗi khi gọi API xóa giọng', 'error');
+      }
+    }
+
+    // Chọn file âm thanh ở tab tạo giọng
+    function handleVoiceFileSelected(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        document.getElementById('fileLabel').innerText = 'Đã chọn: ' + file.name;
+        const preview = document.getElementById('createAudioPreview');
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+      }
+    }
+
+    // Tạo & lưu giọng mới vào Cache
+    async function submitCreateVoice() {
+      const voiceId = document.getElementById('createVoiceId').value.trim();
+      const fileInput = document.getElementById('createVoiceFile');
+      const refText = document.getElementById('createVoiceRefText').value.trim();
+      const btn = document.getElementById('btnCreateVoice');
+
+      if (!voiceId) {
+        showToast('Vui lòng nhập Voice ID định danh', 'error');
+        return;
+      }
+      if (!fileInput.files || !fileInput.files[0]) {
+        showToast('Vui lòng chọn file âm thanh mẫu', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('voice_id', voiceId);
+      formData.append('ref_audio', fileInput.files[0]);
+      if (refText) formData.append('ref_text', refText);
+
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang xử lý & mã hóa giọng...</span>';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch('/voices/create', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Lưu cache thành công!', 'success');
+          document.getElementById('createVoiceId').value = '';
+          document.getElementById('createVoiceFile').value = '';
+          document.getElementById('createAudioPreview').classList.add('hidden');
+          document.getElementById('fileLabel').innerText = 'Nhấp để chọn file hoặc kéo thả vào đây';
+          loadVoicesList();
+        } else {
+          showToast(data.detail || 'Tạo giọng thất bại', 'error');
+        }
+      } catch (e) {
+        showToast('Lỗi kết nối server khi tạo giọng', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i><span>Lưu & Mã Hóa Giọng Vào Cache</span>';
+        lucide.createIcons();
+      }
+    }
+
+    // Sinh giọng nói (TTS)
+    async function generateTTS() {
+      const text = document.getElementById('ttsTextInput').value.trim();
+      if (!text) {
+        showToast('Vui lòng nhập văn bản cần đọc', 'error');
+        return;
+      }
+
+      const payload = {
+        text: text,
+        speed: parseFloat(document.getElementById('ttsSpeed').value) || 1.0,
+        num_step: parseInt(document.getElementById('ttsSteps').value) || 32,
+      };
+
+      const lang = document.getElementById('ttsLang').value;
+      if (lang) payload.language = lang;
+
+      if (currentTTSMode === 'cached') {
+        const voiceId = document.getElementById('ttsVoiceSelect').value;
+        if (!voiceId) {
+          showToast('Vui lòng chọn một giọng trong cache', 'error');
+          return;
+        }
+        payload.voice_id = voiceId;
+      } else if (currentTTSMode === 'design') {
+        const gender = document.getElementById('vdGender').value;
+        const age = document.getElementById('vdAge').value;
+        const pitch = document.getElementById('vdPitch').value;
+        const style = document.getElementById('vdStyle').value;
+        const instructParts = [gender, age, pitch];
+        if (style) instructParts.push(style);
+        payload.instruct = instructParts.join(', ');
+      }
+
+      const btn = document.getElementById('btnGenerateTTS');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang tổng hợp giọng nói...</span>';
+      lucide.createIcons();
+
+      const timerBadge = document.getElementById('genTimerBadge');
+      timerBadge.classList.remove('hidden');
+      timerBadge.innerText = 'Đang sinh...';
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch('/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Lỗi không xác định' }));
+          showToast(err.detail || 'Lỗi sinh giọng nói', 'error');
+          return;
+        }
+
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+        timerBadge.innerText = `Thời gian: ${elapsed}s`;
+
+        const blob = await res.blob();
+        const audioUrl = URL.createObjectURL(blob);
+
+        // Hiển thị player
+        document.getElementById('playerEmptyState').classList.add('hidden');
+        document.getElementById('playerActiveState').classList.remove('hidden');
+        document.getElementById('currentPlayingText').innerText = `"${text}"`;
+
+        const player = document.getElementById('mainAudioPlayer');
+        player.src = audioUrl;
+        player.play();
+
+        const dlBtn = document.getElementById('downloadAudioBtn');
+        dlBtn.href = audioUrl;
+        dlBtn.download = `omnivoice_${Date.now()}.wav`;
+
+        // Thêm vào lịch sử
+        addToHistory(text, audioUrl, elapsed, payload.voice_id || 'Voice Design');
+        showToast(`Tạo thành công sau ${elapsed}s!`, 'success');
+
+      } catch (e) {
+        showToast('Lỗi kết nối khi gọi API /tts', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-white"></i><span>Tạo Giọng Nói Ngay</span>';
+        lucide.createIcons();
+      }
+    }
+
+    // Thêm vào lịch sử
+    function addToHistory(text, url, time, voice) {
+      generationHistory.unshift({ text, url, time, voice, timestamp: new Date().toLocaleTimeString() });
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      if (generationHistory.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Chưa có lịch sử</p>';
+        return;
+      }
+
+      container.innerHTML = generationHistory.map((item, idx) => `
+        <div class="p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span class="font-medium text-indigo-400">🎙️ ${item.voice}</span>
+            <span>${item.time}s • ${item.timestamp}</span>
+          </div>
+          <p class="text-slate-200 line-clamp-1 italic">"${item.text}"</p>
+          <audio controls src="${item.url}" class="w-full h-8"></audio>
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      generationHistory = [];
+      renderHistory();
+    }
+
+    // Clone trực tiếp
+    async function submitDirectClone() {
+      const fileInput = document.getElementById('directAudioFile');
+      const text = document.getElementById('directText').value.trim();
+      const refText = document.getElementById('directRefText').value.trim();
+      const btn = document.getElementById('btnDirectClone');
+
+      if (!fileInput.files || !fileInput.files[0]) {
+        showToast('Vui lòng chọn file âm thanh mẫu', 'error');
+        return;
+      }
+      if (!text) {
+        showToast('Vui lòng nhập văn bản cần đọc', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('ref_audio', fileInput.files[0]);
+      if (refText) formData.append('ref_text', refText);
+
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang xử lý và clone giọng...</span>';
+      lucide.createIcons();
+
+      try {
+        const res = await fetch('/clone', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          showToast(err.detail || 'Lỗi khi clone', 'error');
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const resDiv = document.getElementById('directCloneResult');
+        resDiv.classList.remove('hidden');
+        const p = document.getElementById('directAudioPlayer');
+        p.src = url;
+        p.play();
+        showToast('Đã clone giọng thành công!', 'success');
+      } catch (e) {
+        showToast('Lỗi kết nối khi clone trực tiếp', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-white"></i><span>Clone & Phát Âm Thanh</span>';
+        lucide.createIcons();
+      }
+    }
+
+    // Toast message
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = msg;
+      if (type === 'success') {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 max-w-sm p-4 rounded-xl shadow-2xl text-xs flex items-center space-x-3 bg-emerald-950/90 border border-emerald-500/30 text-emerald-200';
+      } else if (type === 'error') {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 max-w-sm p-4 rounded-xl shadow-2xl text-xs flex items-center space-x-3 bg-rose-950/90 border border-rose-500/30 text-rose-200';
+      } else {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 max-w-sm p-4 rounded-xl shadow-2xl text-xs flex items-center space-x-3 bg-slate-900/90 border border-slate-700 text-slate-200';
+      }
+
+      setTimeout(() => {
+        toast.className = 'fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 max-w-sm p-4 rounded-xl shadow-2xl text-xs flex items-center space-x-3 pointer-events-none';
+      }, 3500);
+    }
+
+    // Copy code snippet
+    function copyCode(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text);
+      showToast('Đã sao chép mã vào clipboard!', 'success');
+    }
+
+    // Khởi động
+    checkHealth();
+    loadVoicesList();
+  </script>
+</body>
+</html>
