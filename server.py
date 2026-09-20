@@ -1,4 +1,6 @@
+import asyncio
 import io
+import logging
 import os
 import tempfile
 from contextlib import asynccontextmanager
@@ -12,11 +14,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from omnivoice import OmniVoice, VoiceClonePrompt
 from omnivoice.utils.common import get_best_device
 
-# Thư mục lưu trữ
+# ==========================================
+# Cấu hình Logging chuẩn
+# ==========================================
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("omnivoice_server")
+
+# ==========================================
+# Thư mục lưu trữ & Biến môi trường
+# ==========================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VOICES_DIR = os.path.join(BASE_DIR, "saved_voices")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -25,27 +39,37 @@ INDEX_FILE = os.path.join(STATIC_DIR, "index.html")
 os.makedirs(VOICES_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-# Biến toàn cục lưu trữ mô hình và cache giọng nói
+# Cấu hình Whisper ASR (mặc định True để tự nhận diện ref_text khi để trống, có thể tắt bằng OMNIVOICE_LOAD_ASR=false để tiết kiệm ~1.5GB RAM)
+LOAD_ASR = os.getenv("OMNIVOICE_LOAD_ASR", "true").lower() in ("true", "1", "yes")
+
+# ==========================================
+# State toàn cục & Concurrency Control
+# ==========================================
 model: Optional[OmniVoice] = None
 voice_cache: Dict[str, VoiceClonePrompt] = {}
+inference_lock = asyncio.Lock()  # Đảm bảo chỉ 1 request inference chạy trên model tại 1 thời điểm
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model, voice_cache
     device = get_best_device()
-    dtype = torch.float32 if str(device).startswith("mps") else torch.float16
-    print(f"--> [OmniVoice] Đang khởi động model trên: {device} ({dtype})...")
+    
+    # CHỈ dùng float16 trên NVIDIA CUDA. Với Apple MPS và CPU, bắt buộc dùng float32 để tránh lỗi / chậm.
+    dtype = torch.float16 if str(device).startswith("cuda") else torch.float32
+    
+    logger.info(f"Đang nạp model OmniVoice trên thiết bị: {device} ({dtype}), load_asr={LOAD_ASR}...")
     model = OmniVoice.from_pretrained(
         "k2-fsa/OmniVoice",
         device_map=device,
         dtype=dtype,
-        load_asr=True,
+        load_asr=LOAD_ASR,
     )
-    print("--> [OmniVoice] Model đã sẵn sàng!")
+    logger.info("Model OmniVoice đã sẵn sàng phục vụ!")
 
     # Tải trước các giọng đã lưu từ đĩa vào RAM Cache
-    print("--> [OmniVoice] Đang tải các Voice Cache từ thư mục saved_voices/...")
+    logger.info("Đang nạp các Voice Profile từ thư mục saved_voices/...")
+    loaded_count = 0
     for filename in os.listdir(VOICES_DIR):
         if filename.endswith(".pt"):
             voice_id = os.path.splitext(filename)[0]
@@ -53,34 +77,49 @@ async def lifespan(app: FastAPI):
                 voice_cache[voice_id] = VoiceClonePrompt.load(
                     os.path.join(VOICES_DIR, filename)
                 )
-                print(f"    Loaded voice cache: '{voice_id}'")
+                loaded_count += 1
+                logger.debug(f"Đã nạp voice cache: '{voice_id}'")
             except Exception as e:
-                print(f"    Lỗi nạp voice '{voice_id}': {e}")
-    print(f"--> [OmniVoice] Đã sẵn sàng phục vụ với {len(voice_cache)} giọng trong cache!")
+                logger.error(f"Lỗi nạp voice '{voice_id}': {e}")
+    logger.info(f"Đã sẵn sàng với {loaded_count} giọng trong cache!")
     yield
-    print("--> [OmniVoice] Đang dừng server...")
+    logger.info("Đang dừng OmniVoice server...")
 
 
 app = FastAPI(
     title="OmniVoice Studio Local API",
-    description="API cục bộ chuyển đổi văn bản thành giọng nói có hỗ trợ Cache Giọng Mẫu (VoiceClonePrompt)",
-    version="1.2.0",
+    description="API chuyển đổi văn bản thành giọng nói (TTS) & Voice Cloning có hỗ trợ Cache Voice Profile",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ==========================================
+# Cấu hình CORS chuẩn
+# ==========================================
+cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+if cors_origins_env == "*":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,  # Wildcard không đi kèm allow_credentials=True theo chuẩn W3C
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Phục vụ static files và trang giao diện chính tại http://localhost:8000
+# Phục vụ static files và trang giao diện chính
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.get("/", include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def serve_index():
     if os.path.exists(INDEX_FILE):
         return FileResponse(INDEX_FILE)
@@ -92,16 +131,17 @@ class TTSRequest(BaseModel):
     voice_id: Optional[str] = None  # Tên giọng đã cache (nếu dùng Voice Cloning)
     instruct: Optional[str] = None  # Thuộc tính giọng (nếu dùng Voice Design)
     speed: Optional[float] = 1.0  # Tốc độ đọc
-    num_step: Optional[int] = 32  # Số bước (16: nhanh, 32: chuẩn chất lượng)
+    num_step: Optional[int] = 32  # Số bước unmasking (16: nhanh, 32: chuẩn chất lượng)
     language: Optional[str] = None  # Mã ngôn ngữ (vd: 'vi', 'en')
 
 
-@app.get("/health")
+@app.get("/health", summary="Kiểm tra trạng thái server")
 def health_check():
     return {
         "status": "ok",
         "model_loaded": model is not None,
         "cached_voices": list(voice_cache.keys()),
+        "asr_enabled": LOAD_ASR,
     }
 
 
@@ -123,26 +163,35 @@ async def create_and_cache_voice(
     if not voice_id:
         raise HTTPException(status_code=400, detail="voice_id không được để trống")
 
-    # Lưu tạm audio để encode
-    suffix = os.path.splitext(ref_audio.filename or "")[1] or ".wav"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        content = await ref_audio.read()
-        tmp_file.write(content)
-        tmp_path = tmp_file.name
-
-    try:
-        # Encode giọng mẫu thành embedding token
-        prompt = model.create_voice_clone_prompt(
-            ref_audio=tmp_path,
-            ref_text=ref_text,
+    if not LOAD_ASR and not ref_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Server đang tắt mô hình ASR (LOAD_ASR=False), vui lòng nhập nội dung 'ref_text' thủ công."
         )
+
+    tmp_path = None
+    try:
+        suffix = os.path.splitext(ref_audio.filename or "")[1] or ".wav"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_path = tmp_file.name
+            content = await ref_audio.read()
+            tmp_file.write(content)
+
+        # Trích xuất vector giọng nói an toàn trong threadpool và qua lock
+        async with inference_lock:
+            prompt = await run_in_threadpool(
+                model.create_voice_clone_prompt,
+                ref_audio=tmp_path,
+                ref_text=ref_text,
+            )
 
         # Lưu vào RAM cache
         voice_cache[voice_id] = prompt
 
-        # Lưu vào đĩa để lần sau khởi động server không phải encode lại
+        # Lưu vào đĩa để lần sau khởi động không phải encode lại
         save_path = os.path.join(VOICES_DIR, f"{voice_id}.pt")
         prompt.save(save_path)
+        logger.info(f"Đã tạo và lưu cache giọng '{voice_id}' thành công.")
 
         return {
             "status": "success",
@@ -150,10 +199,14 @@ async def create_and_cache_voice(
             "message": f"Đã lưu cache giọng '{voice_id}' thành công!",
         }
     except Exception as e:
+        logger.error(f"Lỗi khi xử lý tạo giọng '{voice_id}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Lỗi khi xử lý giọng mẫu: {str(e)}")
     finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError as e:
+                logger.warning(f"Không thể xóa file tạm {tmp_path}: {e}")
 
 
 @app.delete("/voices/{voice_id}", summary="Xóa một giọng khỏi cache")
@@ -161,10 +214,14 @@ def delete_voice(voice_id: str):
     removed = voice_cache.pop(voice_id, None)
     file_path = os.path.join(VOICES_DIR, f"{voice_id}.pt")
     if os.path.exists(file_path):
-        os.remove(file_path)
+        try:
+            os.remove(file_path)
+        except OSError as e:
+            logger.error(f"Lỗi xóa file {file_path}: {e}")
 
     if not removed and not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Không tìm thấy voice_id này")
+    logger.info(f"Đã xóa giọng '{voice_id}' khỏi cache.")
     return {"status": "success", "message": f"Đã xóa giọng '{voice_id}'"}
 
 
@@ -186,14 +243,17 @@ async def text_to_speech(req: TTSRequest):
         prompt = voice_cache[req.voice_id]
 
     try:
-        audios = model.generate(
-            text=req.text,
-            voice_clone_prompt=prompt,
-            instruct=req.instruct,
-            speed=req.speed,
-            num_step=req.num_step,
-            language=req.language,
-        )
+        # Chạy inference trong threadpool tách biệt, đồng thời bảo vệ qua inference_lock
+        async with inference_lock:
+            audios = await run_in_threadpool(
+                model.generate,
+                text=req.text,
+                voice_clone_prompt=prompt,
+                instruct=req.instruct,
+                speed=req.speed,
+                num_step=req.num_step,
+                language=req.language,
+            )
 
         buffer = io.BytesIO()
         sf.write(buffer, audios[0], model.sampling_rate, format="WAV")
@@ -201,6 +261,7 @@ async def text_to_speech(req: TTSRequest):
 
         return Response(content=buffer.read(), media_type="audio/wav")
     except Exception as e:
+        logger.error(f"Lỗi khi sinh giọng /tts: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Lỗi khi sinh giọng: {str(e)}")
 
 
@@ -216,21 +277,30 @@ async def clone_voice_direct(
     if not model:
         raise HTTPException(status_code=503, detail="Model chưa sẵn sàng")
 
-    suffix = os.path.splitext(ref_audio.filename or "")[1] or ".wav"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        content = await ref_audio.read()
-        tmp_file.write(content)
-        tmp_path = tmp_file.name
-
-    try:
-        audios = model.generate(
-            text=text,
-            ref_audio=tmp_path,
-            ref_text=ref_text,
-            speed=speed,
-            num_step=num_step,
-            language=language,
+    if not LOAD_ASR and not ref_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Server đang tắt mô hình ASR (LOAD_ASR=False), vui lòng nhập nội dung 'ref_text' thủ công."
         )
+
+    tmp_path = None
+    try:
+        suffix = os.path.splitext(ref_audio.filename or "")[1] or ".wav"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_path = tmp_file.name
+            content = await ref_audio.read()
+            tmp_file.write(content)
+
+        async with inference_lock:
+            audios = await run_in_threadpool(
+                model.generate,
+                text=text,
+                ref_audio=tmp_path,
+                ref_text=ref_text,
+                speed=speed,
+                num_step=num_step,
+                language=language,
+            )
 
         buffer = io.BytesIO()
         sf.write(buffer, audios[0], model.sampling_rate, format="WAV")
@@ -238,10 +308,14 @@ async def clone_voice_direct(
 
         return Response(content=buffer.read(), media_type="audio/wav")
     except Exception as e:
+        logger.error(f"Lỗi khi clone trực tiếp: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Lỗi khi clone trực tiếp: {str(e)}")
     finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError as e:
+                logger.warning(f"Không thể xóa file tạm {tmp_path}: {e}")
 
 
 if __name__ == "__main__":
