@@ -313,12 +313,56 @@
             <!-- Upload Audio File -->
             <div>
               <label class="block text-xs font-medium text-slate-300 mb-1">File âm thanh mẫu (WAV, MP3...) *</label>
-              <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-950/50" onclick="document.getElementById('createVoiceFile').click()">
+              <div id="createDropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-950/50" onclick="document.getElementById('createVoiceFile').click()">
                 <i data-lucide="upload-cloud" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
                 <p id="fileLabel" class="text-xs text-slate-300 font-medium">Nhấp để chọn file hoặc kéo thả vào đây</p>
                 <p class="text-[10px] text-slate-500 mt-0.5">Khuyên dùng đoạn 3 - 10 giây giọng sạch</p>
                 <input id="createVoiceFile" type="file" accept="audio/*" class="hidden" onchange="handleVoiceFileSelected(this)">
               </div>
+
+              <!-- Audio Trimmer Box -->
+              <div id="createVoiceTrimmerContainer" class="hidden mt-3 p-3.5 bg-slate-950/90 border border-slate-800 rounded-xl space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-300 flex items-center space-x-1.5">
+                    <i data-lucide="scissors" class="w-3.5 h-3.5 text-indigo-400"></i>
+                    <span>Cắt thời lượng audio</span>
+                  </span>
+                  <span id="createDurationBadge" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    --
+                  </span>
+                </div>
+
+                <!-- Interactive Waveform Canvas -->
+                <div class="relative w-full select-none" id="createWaveformWrapper">
+                  <canvas id="createWaveformCanvas" class="w-full h-20 rounded-lg bg-slate-900 block cursor-ew-resize"></canvas>
+                  <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 mt-1 px-1">
+                    <span id="createTimeStart">Bắt đầu: 00:00.00</span>
+                    <span id="createTimeEnd">Kết thúc: 00:00.00</span>
+                  </div>
+                </div>
+
+                <!-- Trimmer Controls -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
+                  <div class="flex items-center space-x-2">
+                    <button type="button" id="createBtnPlayTrim" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 flex items-center space-x-1 font-medium transition-all">
+                      <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                      <span id="createBtnPlayTrimText">Nghe đoạn chọn</span>
+                    </button>
+                    <button type="button" id="createBtnResetTrim" title="Chọn toàn bộ" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors">
+                      <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+
+                  <div class="flex items-center space-x-1 text-[11px]">
+                    <span class="text-slate-500 text-[10px] mr-1 hidden sm:inline">Chọn nhanh:</span>
+                    <button type="button" onclick="createTrimmer.setPreset(3)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">3s</button>
+                    <button type="button" onclick="createTrimmer.setPreset(5)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">5s</button>
+                    <button type="button" onclick="createTrimmer.setPreset(10)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">10s</button>
+                    <button type="button" onclick="createTrimmer.reset()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">Tất cả</button>
+                  </div>
+                </div>
+              </div>
+
               <audio id="createAudioPreview" controls class="w-full mt-2 hidden h-9"></audio>
             </div>
 
@@ -375,8 +419,56 @@
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">File âm thanh mẫu *</label>
-            <input id="directAudioFile" type="file" accept="audio/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-500/10 file:text-indigo-400 hover:file:bg-indigo-500/20 cursor-pointer">
+            <label class="block text-xs font-medium text-slate-300 mb-1">File âm thanh mẫu (WAV, MP3...) *</label>
+            <div id="directDropZone" class="border-2 border-dashed border-slate-700 hover:border-amber-500/50 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-950/50" onclick="document.getElementById('directAudioFile').click()">
+              <i data-lucide="upload-cloud" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
+              <p id="directFileLabel" class="text-xs text-slate-300 font-medium">Nhấp để chọn file hoặc kéo thả vào đây</p>
+              <p class="text-[10px] text-slate-500 mt-0.5">Khuyên dùng đoạn 3 - 10 giây giọng sạch</p>
+              <input id="directAudioFile" type="file" accept="audio/*" class="hidden" onchange="handleDirectFileSelected(this)">
+            </div>
+
+            <!-- Direct Clone Audio Trimmer Box -->
+            <div id="directVoiceTrimmerContainer" class="hidden mt-3 p-3.5 bg-slate-950/90 border border-slate-800 rounded-xl space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-medium text-slate-300 flex items-center space-x-1.5">
+                  <i data-lucide="scissors" class="w-3.5 h-3.5 text-amber-400"></i>
+                  <span>Cắt thời lượng audio</span>
+                </span>
+                <span id="directDurationBadge" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  --
+                </span>
+              </div>
+
+              <!-- Interactive Waveform Canvas -->
+              <div class="relative w-full select-none" id="directWaveformWrapper">
+                <canvas id="directWaveformCanvas" class="w-full h-20 rounded-lg bg-slate-900 block cursor-ew-resize"></canvas>
+                <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 mt-1 px-1">
+                  <span id="directTimeStart">Bắt đầu: 00:00.00</span>
+                  <span id="directTimeEnd">Kết thúc: 00:00.00</span>
+                </div>
+              </div>
+
+              <!-- Trimmer Controls -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
+                <div class="flex items-center space-x-2">
+                  <button type="button" id="directBtnPlayTrim" class="px-2.5 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 flex items-center space-x-1 font-medium transition-all">
+                    <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                    <span id="directBtnPlayTrimText">Nghe đoạn chọn</span>
+                  </button>
+                  <button type="button" id="directBtnResetTrim" title="Chọn toàn bộ" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+
+                <div class="flex items-center space-x-1 text-[11px]">
+                  <span class="text-slate-500 text-[10px] mr-1 hidden sm:inline">Chọn nhanh:</span>
+                  <button type="button" onclick="directTrimmer.setPreset(3)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">3s</button>
+                  <button type="button" onclick="directTrimmer.setPreset(5)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">5s</button>
+                  <button type="button" onclick="directTrimmer.setPreset(10)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">10s</button>
+                  <button type="button" onclick="directTrimmer.reset()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60">Tất cả</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -541,7 +633,16 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
         btn.classList.add('border-indigo-500', 'text-indigo-400');
       }
 
-      if (tabId === 'voices') loadVoicesList();
+      if (tabId === 'voices') {
+        loadVoicesList();
+        if (createTrimmer && createTrimmer.audioBuffer) {
+          setTimeout(() => { createTrimmer.resizeCanvas(); createTrimmer.draw(); }, 50);
+        }
+      } else if (tabId === 'directClone') {
+        if (directTrimmer && directTrimmer.audioBuffer) {
+          setTimeout(() => { directTrimmer.resizeCanvas(); directTrimmer.draw(); }, 50);
+        }
+      }
     }
 
     // Chọn chế độ TTS
@@ -673,14 +774,563 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       }
     }
 
+    // ==========================================
+    // MODULE AUDIO TRIMMER & WAV ENCODER
+    // ==========================================
+
+    function formatTime(sec) {
+      if (isNaN(sec) || sec < 0) sec = 0;
+      const mins = Math.floor(sec / 60);
+      const secs = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 100);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+    }
+
+    // Mã hóa AudioBuffer (hoặc 1 đoạn cắt) thành WAV Blob 16-bit PCM chuẩn
+    function audioBufferToWavBlob(abuffer, startSec = 0, endSec = null) {
+      if (endSec === null || endSec > abuffer.duration) endSec = abuffer.duration;
+      if (startSec < 0) startSec = 0;
+      if (startSec >= endSec) startSec = Math.max(0, endSec - 0.1);
+
+      const sampleRate = abuffer.sampleRate;
+      const startOffset = Math.floor(startSec * sampleRate);
+      const endOffset = Math.min(abuffer.length, Math.floor(endSec * sampleRate));
+      const frameCount = Math.max(0, endOffset - startOffset);
+      const numChannels = abuffer.numberOfChannels;
+
+      const length = frameCount * numChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+
+      let pos = 0;
+      const setUint16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
+      const setUint32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
+
+      // RIFF identifier
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8);  // file length - 8
+      setUint32(0x45564157); // "WAVE"
+
+      // Format chunk identifier
+      setUint32(0x20746d66); // "fmt "
+      setUint32(16);         // length of format chunk = 16
+      setUint16(1);          // PCM format
+      setUint16(numChannels);
+      setUint32(sampleRate);
+      setUint32(sampleRate * 2 * numChannels); // byte rate
+      setUint16(numChannels * 2);              // block align
+      setUint16(16);                           // bits per sample
+
+      // Data chunk identifier
+      setUint32(0x61746164); // "data"
+      setUint32(frameCount * numChannels * 2);
+
+      const channels = [];
+      for (let c = 0; c < numChannels; c++) {
+        channels.push(abuffer.getChannelData(c));
+      }
+
+      let offset = startOffset;
+      while (offset < endOffset) {
+        for (let c = 0; c < numChannels; c++) {
+          let s = Math.max(-1, Math.min(1, channels[c][offset]));
+          let intSample = s < 0 ? s * 32768 : s * 32767;
+          view.setInt16(pos, intSample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    class AudioTrimmer {
+      constructor(opts) {
+        this.container = document.getElementById(opts.containerId);
+        this.canvas = document.getElementById(opts.canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.timeStartEl = document.getElementById(opts.timeStartId);
+        this.timeEndEl = document.getElementById(opts.timeEndId);
+        this.durationBadgeEl = document.getElementById(opts.durationBadgeId);
+        this.playBtn = document.getElementById(opts.playBtnId);
+        this.playBtnText = document.getElementById(opts.playBtnTextId);
+        this.resetBtn = document.getElementById(opts.resetBtnId);
+        this.accentColor = opts.accentColor || '#6366f1';
+        this.accentLight = opts.accentLight || '#818cf8';
+        this.selectionBg = opts.selectionBg || 'rgba(99, 102, 241, 0.15)';
+
+        this.audioCtx = null;
+        this.audioBuffer = null;
+        this.rawFile = null;
+        this.peaks = [];
+        this.duration = 0;
+        this.startSec = 0;
+        this.endSec = 0;
+
+        this.isPlaying = false;
+        this.sourceNode = null;
+        this.playStartTime = 0;
+        this.animFrame = null;
+
+        this.activeDrag = null; // 'start' | 'end' | 'region'
+        this.dragStartRatio = 0;
+        this.initialStartSec = 0;
+        this.initialEndSec = 0;
+
+        this.width = 0;
+        this.height = 0;
+
+        this.initEvents();
+      }
+
+      initEvents() {
+        if (this.playBtn) {
+          this.playBtn.addEventListener('click', () => this.togglePlay());
+        }
+        if (this.resetBtn) {
+          this.resetBtn.addEventListener('click', () => this.reset());
+        }
+
+        // Tự động resize canvas theo kích thước container
+        const ro = new ResizeObserver(() => {
+          if (!this.container.classList.contains('hidden') && this.audioBuffer) {
+            this.resizeCanvas();
+            this.draw();
+          }
+        });
+        ro.observe(this.canvas.parentElement);
+
+        // Sự kiện chuột & cảm ứng trên Canvas
+        const onDown = (e) => this.handleDragStart(e);
+        const onMove = (e) => this.handleDragMove(e);
+        const onUp = (e) => this.handleDragEnd(e);
+
+        this.canvas.addEventListener('mousedown', onDown);
+        this.canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mousemove', (e) => {
+          if (this.activeDrag) this.handleDragMove(e);
+        });
+        window.addEventListener('mouseup', onUp);
+
+        this.canvas.addEventListener('touchstart', onDown, { passive: false });
+        this.canvas.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchmove', (e) => {
+          if (this.activeDrag) this.handleDragMove(e);
+        }, { passive: false });
+        window.addEventListener('touchend', onUp);
+      }
+
+      async loadFile(file) {
+        this.rawFile = file;
+        if (!this.audioCtx) {
+          this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.audioCtx.state === 'suspended') {
+          await this.audioCtx.resume();
+        }
+        this.stopPlayback();
+
+        try {
+          const arrayBuf = await file.arrayBuffer();
+          this.audioBuffer = await this.audioCtx.decodeAudioData(arrayBuf);
+          this.duration = this.audioBuffer.duration;
+          this.startSec = 0;
+          // Gợi ý: Nếu file dài hơn 10s, mặc định chọn 10s đầu; nếu <= 10s thì chọn toàn bộ
+          this.endSec = this.duration > 10 ? 10 : this.duration;
+
+          this.computePeaks();
+          this.container.classList.remove('hidden');
+          if (window.lucide) lucide.createIcons();
+          setTimeout(() => {
+            this.resizeCanvas();
+            this.updateUI();
+            this.draw();
+          }, 30);
+        } catch (err) {
+          console.error("Lỗi giải mã audio:", err);
+          showToast("Không thể giải mã file audio để hiển thị sóng", "error");
+        }
+      }
+
+      computePeaks(numBars = 140) {
+        const data = this.audioBuffer.getChannelData(0);
+        const blockSize = Math.max(1, Math.floor(data.length / numBars));
+        this.peaks = [];
+        for (let i = 0; i < numBars; i++) {
+          let sum = 0;
+          const start = i * blockSize;
+          const end = Math.min(start + blockSize, data.length);
+          for (let j = start; j < end; j++) {
+            sum += Math.abs(data[j]);
+          }
+          this.peaks.push(sum / (end - start || 1));
+        }
+        const max = Math.max(...this.peaks, 0.001);
+        this.peaks = this.peaks.map(p => Math.min(1, p / max));
+      }
+
+      resizeCanvas() {
+        const rect = this.canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.width = rect.width || 300;
+        this.height = rect.height || 80;
+        this.canvas.width = this.width * dpr;
+        this.canvas.height = this.height * dpr;
+        this.ctx.resetTransform();
+        this.ctx.scale(dpr, dpr);
+      }
+
+      getEventPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+        return { x, ratio: rect.width > 0 ? (x / rect.width) : 0 };
+      }
+
+      handleDragStart(e) {
+        if (!this.audioBuffer || this.duration <= 0) return;
+        if (e.type === 'touchstart') e.preventDefault();
+
+        const { x, ratio } = this.getEventPos(e);
+        const startX = (this.startSec / this.duration) * this.width;
+        const endX = (this.endSec / this.duration) * this.width;
+        const handleRadius = 16;
+
+        if (Math.abs(x - startX) <= handleRadius) {
+          this.activeDrag = 'start';
+        } else if (Math.abs(x - endX) <= handleRadius) {
+          this.activeDrag = 'end';
+        } else if (x > startX && x < endX) {
+          this.activeDrag = 'region';
+          this.dragStartRatio = ratio;
+          this.initialStartSec = this.startSec;
+          this.initialEndSec = this.endSec;
+        } else {
+          // Click bên ngoài: di chuyển mốc gần nhất
+          const clickSec = ratio * this.duration;
+          if (clickSec < this.startSec) {
+            this.startSec = Math.max(0, clickSec);
+            this.activeDrag = 'start';
+          } else {
+            this.endSec = Math.min(this.duration, clickSec);
+            this.activeDrag = 'end';
+          }
+          this.updateUI();
+          this.draw();
+        }
+      }
+
+      handleDragMove(e) {
+        if (!this.audioBuffer || this.duration <= 0) return;
+
+        const { x, ratio } = this.getEventPos(e);
+        const startX = (this.startSec / this.duration) * this.width;
+        const endX = (this.endSec / this.duration) * this.width;
+        const minGap = 0.5; // tối thiểu 0.5 giây
+
+        if (this.activeDrag) {
+          if (e.cancelable) e.preventDefault();
+
+          if (this.activeDrag === 'start') {
+            const newStart = ratio * this.duration;
+            this.startSec = Math.max(0, Math.min(newStart, this.endSec - minGap));
+          } else if (this.activeDrag === 'end') {
+            const newEnd = ratio * this.duration;
+            this.endSec = Math.min(this.duration, Math.max(newEnd, this.startSec + minGap));
+          } else if (this.activeDrag === 'region') {
+            const deltaSec = (ratio - this.dragStartRatio) * this.duration;
+            const selDur = this.initialEndSec - this.initialStartSec;
+            let newStart = this.initialStartSec + deltaSec;
+            let newEnd = this.initialEndSec + deltaSec;
+
+            if (newStart < 0) {
+              newStart = 0;
+              newEnd = selDur;
+            } else if (newEnd > this.duration) {
+              newEnd = this.duration;
+              newStart = Math.max(0, this.duration - selDur);
+            }
+            this.startSec = newStart;
+            this.endSec = newEnd;
+          }
+
+          this.updateUI();
+          this.draw();
+        } else {
+          // Thay đổi con trỏ chuột theo vị trí hover
+          const handleRadius = 14;
+          if (Math.abs(x - startX) <= handleRadius || Math.abs(x - endX) <= handleRadius) {
+            this.canvas.style.cursor = 'ew-resize';
+          } else if (x > startX && x < endX) {
+            this.canvas.style.cursor = 'grab';
+          } else {
+            this.canvas.style.cursor = 'pointer';
+          }
+        }
+      }
+
+      handleDragEnd() {
+        if (this.activeDrag) {
+          this.activeDrag = null;
+          this.canvas.style.cursor = 'default';
+        }
+      }
+
+      setPreset(seconds) {
+        if (!this.audioBuffer || this.duration <= 0) return;
+        this.startSec = 0;
+        this.endSec = Math.min(this.duration, seconds);
+        this.updateUI();
+        this.draw();
+      }
+
+      reset() {
+        if (!this.audioBuffer || this.duration <= 0) return;
+        this.startSec = 0;
+        this.endSec = this.duration;
+        this.updateUI();
+        this.draw();
+      }
+
+      updateUI() {
+        if (this.timeStartEl) this.timeStartEl.innerText = 'Bắt đầu: ' + formatTime(this.startSec);
+        if (this.timeEndEl) this.timeEndEl.innerText = 'Kết thúc: ' + formatTime(this.endSec);
+
+        const selDuration = Math.max(0, this.endSec - this.startSec);
+        if (this.durationBadgeEl) {
+          const durStr = selDuration.toFixed(2);
+          if (selDuration >= 3.0 && selDuration <= 10.0) {
+            this.durationBadgeEl.innerText = `${durStr}s • Lý tưởng (3s - 10s)`;
+            this.durationBadgeEl.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+          } else if (selDuration < 3.0) {
+            this.durationBadgeEl.innerText = `${durStr}s • Hơi ngắn (< 3s)`;
+            this.durationBadgeEl.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20';
+          } else {
+            this.durationBadgeEl.innerText = `${durStr}s • Khuyên dùng ≤ 10s`;
+            this.durationBadgeEl.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20';
+          }
+        }
+      }
+
+      draw() {
+        if (!this.ctx || this.width <= 0) return;
+        const w = this.width;
+        const h = this.height;
+
+        this.ctx.clearRect(0, 0, w, h);
+
+        // Vẽ nền canvas
+        this.ctx.fillStyle = '#090d16';
+        this.ctx.fillRect(0, 0, w, h);
+
+        const startX = (this.startSec / this.duration) * w;
+        const endX = (this.endSec / this.duration) * w;
+
+        // Vẽ waveform bars
+        const numBars = this.peaks.length;
+        if (numBars > 0) {
+          const spacing = w / numBars;
+          const barW = Math.max(1.5, spacing - 1.2);
+
+          for (let i = 0; i < numBars; i++) {
+            const barX = i * spacing;
+            const barTime = (i / numBars) * this.duration;
+            const isSelected = (barTime >= this.startSec && barTime <= this.endSec);
+
+            const peak = this.peaks[i] || 0;
+            const barH = Math.max(3, peak * (h - 22));
+            const barY = (h - barH) / 2;
+
+            this.ctx.fillStyle = isSelected ? this.accentLight : '#334155';
+            this.ctx.beginPath();
+            if (this.ctx.roundRect) {
+              this.ctx.roundRect(barX, barY, barW, barH, 1.5);
+            } else {
+              this.ctx.rect(barX, barY, barW, barH);
+            }
+            this.ctx.fill();
+          }
+        }
+
+        // Mặt nạ che mờ 2 bên ngoài vùng chọn
+        this.ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+        if (startX > 0) {
+          this.ctx.fillRect(0, 0, startX, h);
+        }
+        if (endX < w) {
+          this.ctx.fillRect(endX, 0, w - endX, h);
+        }
+
+        // Vùng chọn ở giữa
+        this.ctx.fillStyle = this.selectionBg;
+        this.ctx.fillRect(startX, 0, endX - startX, h);
+
+        this.ctx.strokeStyle = this.accentColor;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeRect(startX, 1, Math.max(1, endX - startX), h - 2);
+
+        // Hàm vẽ tay nắm kéo (Handle Pill)
+        const drawHandle = (hx) => {
+          this.ctx.fillStyle = this.accentColor;
+          this.ctx.strokeStyle = '#ffffff';
+          this.ctx.lineWidth = 1.5;
+
+          // Vạch chỉ báo đứng
+          this.ctx.beginPath();
+          this.ctx.moveTo(hx, 0);
+          this.ctx.lineTo(hx, h);
+          this.ctx.stroke();
+
+          // Tay nắm nổi ở giữa
+          const pillW = 10;
+          const pillH = 34;
+          const pillY = (h - pillH) / 2;
+          this.ctx.beginPath();
+          if (this.ctx.roundRect) {
+            this.ctx.roundRect(hx - pillW / 2, pillY, pillW, pillH, 5);
+          } else {
+            this.ctx.rect(hx - pillW / 2, pillY, pillW, pillH);
+          }
+          this.ctx.fill();
+          this.ctx.stroke();
+
+          // Gạch cầm tay bên trong
+          this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(hx - 1.5, pillY + 11);
+          this.ctx.lineTo(hx - 1.5, pillY + 23);
+          this.ctx.moveTo(hx + 1.5, pillY + 11);
+          this.ctx.lineTo(hx + 1.5, pillY + 23);
+          this.ctx.stroke();
+        };
+
+        drawHandle(startX);
+        drawHandle(endX);
+
+        // Vẽ vạch Playhead khi phát
+        if (this.isPlaying && this.audioCtx) {
+          const elapsed = this.audioCtx.currentTime - this.playStartTime;
+          const curTime = this.startSec + elapsed;
+          if (curTime <= this.endSec) {
+            const playX = (curTime / this.duration) * w;
+            this.ctx.strokeStyle = '#38bdf8';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(playX, 0);
+            this.ctx.lineTo(playX, h);
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = '#38bdf8';
+            this.ctx.beginPath();
+            this.ctx.arc(playX, 5, 3.5, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+        }
+      }
+
+      togglePlay() {
+        if (this.isPlaying) {
+          this.stopPlayback();
+        } else {
+          this.startPlayback();
+        }
+      }
+
+      startPlayback() {
+        if (!this.audioBuffer || this.duration <= 0) return;
+        if (!this.audioCtx) {
+          this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume();
+        }
+
+        this.stopPlayback();
+
+        const selDuration = Math.max(0.1, this.endSec - this.startSec);
+        this.sourceNode = this.audioCtx.createBufferSource();
+        this.sourceNode.buffer = this.audioBuffer;
+        this.sourceNode.connect(this.audioCtx.destination);
+
+        this.isPlaying = true;
+        this.playStartTime = this.audioCtx.currentTime;
+
+        if (this.playBtnText) this.playBtnText.innerText = 'Dừng phát';
+
+        this.sourceNode.onended = () => {
+          this.stopPlayback();
+        };
+
+        this.sourceNode.start(0, this.startSec, selDuration);
+
+        const animate = () => {
+          if (!this.isPlaying) return;
+          const elapsed = this.audioCtx.currentTime - this.playStartTime;
+          if (elapsed >= selDuration) {
+            this.stopPlayback();
+            return;
+          }
+          this.draw();
+          this.animFrame = requestAnimationFrame(animate);
+        };
+        this.animFrame = requestAnimationFrame(animate);
+      }
+
+      stopPlayback() {
+        if (this.animFrame) {
+          cancelAnimationFrame(this.animFrame);
+          this.animFrame = null;
+        }
+        if (this.sourceNode) {
+          try {
+            this.sourceNode.stop();
+            this.sourceNode.disconnect();
+          } catch (e) {}
+          this.sourceNode = null;
+        }
+        this.isPlaying = false;
+        if (this.playBtnText) this.playBtnText.innerText = 'Nghe đoạn chọn';
+        this.draw();
+      }
+
+      getTrimmedWavBlob() {
+        if (!this.audioBuffer) return this.rawFile;
+        return audioBufferToWavBlob(this.audioBuffer, this.startSec, this.endSec);
+      }
+
+      clear() {
+        this.stopPlayback();
+        this.audioBuffer = null;
+        this.rawFile = null;
+        this.peaks = [];
+        this.duration = 0;
+        this.container.classList.add('hidden');
+      }
+    }
+
+    let createTrimmer = null;
+    let directTrimmer = null;
+
     // Chọn file âm thanh ở tab tạo giọng
     function handleVoiceFileSelected(input) {
       if (input.files && input.files[0]) {
         const file = input.files[0];
         document.getElementById('fileLabel').innerText = 'Đã chọn: ' + file.name;
-        const preview = document.getElementById('createAudioPreview');
-        preview.src = URL.createObjectURL(file);
-        preview.classList.remove('hidden');
+        if (createTrimmer) {
+          createTrimmer.loadFile(file);
+        }
+      }
+    }
+
+    // Chọn file âm thanh ở tab clone nhanh
+    function handleDirectFileSelected(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        document.getElementById('directFileLabel').innerText = 'Đã chọn: ' + file.name;
+        if (directTrimmer) {
+          directTrimmer.loadFile(file);
+        }
       }
     }
 
@@ -702,7 +1352,15 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
 
       const formData = new FormData();
       formData.append('voice_id', voiceId);
-      formData.append('ref_audio', fileInput.files[0]);
+
+      // Ưu tiên lấy file WAV đã cắt lát qua Trimmer
+      if (createTrimmer && createTrimmer.audioBuffer) {
+        const trimmedBlob = createTrimmer.getTrimmedWavBlob();
+        formData.append('ref_audio', trimmedBlob, 'sample_trimmed.wav');
+      } else {
+        formData.append('ref_audio', fileInput.files[0]);
+      }
+
       if (refText) formData.append('ref_text', refText);
 
       btn.disabled = true;
@@ -719,8 +1377,8 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
           showToast(data.message || 'Lưu cache thành công!', 'success');
           document.getElementById('createVoiceId').value = '';
           document.getElementById('createVoiceFile').value = '';
-          document.getElementById('createAudioPreview').classList.add('hidden');
           document.getElementById('fileLabel').innerText = 'Nhấp để chọn file hoặc kéo thả vào đây';
+          if (createTrimmer) createTrimmer.clear();
           loadVoicesList();
         } else {
           showToast(data.detail || 'Tạo giọng thất bại', 'error');
@@ -871,7 +1529,15 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
 
       const formData = new FormData();
       formData.append('text', text);
-      formData.append('ref_audio', fileInput.files[0]);
+
+      // Ưu tiên lấy file WAV đã cắt lát qua Trimmer
+      if (directTrimmer && directTrimmer.audioBuffer) {
+        const trimmedBlob = directTrimmer.getTrimmedWavBlob();
+        formData.append('ref_audio', trimmedBlob, 'direct_sample_trimmed.wav');
+      } else {
+        formData.append('ref_audio', fileInput.files[0]);
+      }
+
       if (refText) formData.append('ref_text', refText);
 
       btn.disabled = true;
@@ -930,9 +1596,67 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       showToast('Đã sao chép mã vào clipboard!', 'success');
     }
 
+    function initTrimmers() {
+      createTrimmer = new AudioTrimmer({
+        containerId: 'createVoiceTrimmerContainer',
+        canvasId: 'createWaveformCanvas',
+        timeStartId: 'createTimeStart',
+        timeEndId: 'createTimeEnd',
+        durationBadgeId: 'createDurationBadge',
+        playBtnId: 'createBtnPlayTrim',
+        playBtnTextId: 'createBtnPlayTrimText',
+        resetBtnId: 'createBtnResetTrim',
+        accentColor: '#6366f1',
+        accentLight: '#818cf8',
+        selectionBg: 'rgba(99, 102, 241, 0.15)',
+      });
+
+      directTrimmer = new AudioTrimmer({
+        containerId: 'directVoiceTrimmerContainer',
+        canvasId: 'directWaveformCanvas',
+        timeStartId: 'directTimeStart',
+        timeEndId: 'directTimeEnd',
+        durationBadgeId: 'directDurationBadge',
+        playBtnId: 'directBtnPlayTrim',
+        playBtnTextId: 'directBtnPlayTrimText',
+        resetBtnId: 'directBtnResetTrim',
+        accentColor: '#d97706',
+        accentLight: '#fbbf24',
+        selectionBg: 'rgba(245, 158, 11, 0.15)',
+      });
+
+      // Kéo thả file trực tiếp từ máy tính vào khung dropZone
+      setupDropZone('createDropZone', 'createVoiceFile', (input) => handleVoiceFileSelected(input));
+      setupDropZone('directDropZone', 'directAudioFile', (input) => handleDirectFileSelected(input));
+    }
+
+    function setupDropZone(zoneId, inputId, onFileSelected) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      if (!zone || !input) return;
+
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('border-indigo-500', 'bg-indigo-500/10');
+      });
+      zone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        zone.classList.remove('border-indigo-500', 'bg-indigo-500/10');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('border-indigo-500', 'bg-indigo-500/10');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          input.files = e.dataTransfer.files;
+          onFileSelected(input);
+        }
+      });
+    }
+
     // Khởi động
     checkHealth();
     loadVoicesList();
+    initTrimmers();
   </script>
 </body>
 </html>
