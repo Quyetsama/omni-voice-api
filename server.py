@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from omnivoice import OmniVoice, VoiceClonePrompt
+from omnivoice import OmniVoice, OmniVoiceGenerationConfig, VoiceClonePrompt
 from omnivoice.utils.common import get_best_device
 
 # ==========================================
@@ -126,13 +126,82 @@ def serve_index():
     return {"message": "OmniVoice API is running. Visit /docs for Swagger UI."}
 
 
+# Các preset phong cách & cảm xúc tối ưu dựa theo tài liệu generation-parameters
+PRESETS = {
+    "expressive": {
+        "name": "Truyền cảm & Nhấn nhá",
+        "description": "Biến thiên cao độ tự nhiên, giàu năng lượng, nhấn nhá biểu cảm rõ nét (Khuyên dùng)",
+        "guidance_scale": 2.8,
+        "class_temperature": 0.35,
+        "num_step": 36,
+        "speed": 1.0,
+    },
+    "storyteller": {
+        "name": "Kể chuyện / Tâm sự",
+        "description": "Giọng đọc trầm ấm, nhịp ngắt sâu lắng, truyền cảm hứng cho sách nói, podcast",
+        "guidance_scale": 2.5,
+        "class_temperature": 0.40,
+        "num_step": 40,
+        "speed": 0.95,
+    },
+    "formal": {
+        "name": "Tin tức / Trang trọng",
+        "description": "Phát âm chuẩn xác, rõ ràng, dứt khoát, phong thái phát thanh viên",
+        "guidance_scale": 2.2,
+        "class_temperature": 0.15,
+        "num_step": 32,
+        "speed": 1.0,
+    },
+    "whisper": {
+        "name": "Thì thầm / Tâm tình",
+        "description": "Giọng thì thầm êm dịu, gần gũi, phong cách ASMR / tâm sự đêm khuya",
+        "guidance_scale": 3.2,
+        "class_temperature": 0.30,
+        "num_step": 36,
+        "speed": 1.0,
+        "instruct": "whisper",
+    },
+    "dramatic": {
+        "name": "Kịch tính / Cảm xúc mạnh",
+        "description": "Cường độ biểu cảm cao, ngữ điệu kịch tính, nhịp nhanh và sắc sảo",
+        "guidance_scale": 3.5,
+        "class_temperature": 0.45,
+        "num_step": 48,
+        "speed": 1.05,
+    },
+    "default": {
+        "name": "Mặc định (Normal)",
+        "description": "Cấu hình gốc của OmniVoice (Greedy decoding, trung tính)",
+        "guidance_scale": 2.0,
+        "class_temperature": 0.0,
+        "num_step": 32,
+        "speed": 1.0,
+    },
+}
+
+
 class TTSRequest(BaseModel):
     text: str
     voice_id: Optional[str] = None  # Tên giọng đã cache (nếu dùng Voice Cloning)
-    instruct: Optional[str] = None  # Thuộc tính giọng (nếu dùng Voice Design)
-    speed: Optional[float] = 1.0  # Tốc độ đọc
-    num_step: Optional[int] = 32  # Số bước unmasking (16: nhanh, 32: chuẩn chất lượng)
-    language: Optional[str] = None  # Mã ngôn ngữ (vd: 'vi', 'en')
+    instruct: Optional[str] = None  # Thuộc tính giọng / Sắc thái bổ trợ (vd: 'whisper', 'female, high pitch')
+    speed: Optional[float] = 1.0  # Tốc độ đọc (>1.0: nhanh, <1.0: chậm)
+    duration: Optional[float] = None  # Thời lượng cố định bằng giây (nếu có sẽ ghi đè speed)
+    num_step: Optional[int] = 32  # Số bước unmasking (16: nhanh, 32: chuẩn, 40-48: cảm xúc chi tiết)
+    language: Optional[str] = None  # Mã ngôn ngữ (vd: 'vi', 'en', 'zh', 'ja', 'ko')
+
+    # Tham số sinh âm nâng cao theo docs/generation-parameters.md:
+    guidance_scale: Optional[float] = 2.0  # CFG scale (2.5 - 3.2 tăng mạnh độ bám cảm xúc / instruct)
+    class_temperature: Optional[float] = 0.0  # Độ biến chuyển cao độ & ngẫu nhiên token (0.25 - 0.45 giúp giàu cảm xúc)
+    position_temperature: Optional[float] = 5.0  # Nhiệt độ vị trí unmask
+    t_shift: Optional[float] = 0.1  # Độ dịch bước thời gian (nhỏ hơn ưu tiên cấu trúc sớm)
+    layer_penalty_factor: Optional[float] = 5.0  # Phạt unmask tầng codebook sâu
+    denoise: Optional[bool] = True  # Lọc tạp âm với token <|denoise|>
+    normalize_text: Optional[bool] = False  # Chuẩn hóa số/ngày tháng
+
+
+@app.get("/presets", summary="Lấy danh sách các cài đặt mẫu cảm xúc & phong cách")
+def get_presets():
+    return PRESETS
 
 
 @app.get("/health", summary="Kiểm tra trạng thái server")
@@ -243,6 +312,17 @@ async def text_to_speech(req: TTSRequest):
         prompt = voice_cache[req.voice_id]
 
     try:
+        # Xây dựng OmniVoiceGenerationConfig với các tham số tối ưu hóa cảm xúc
+        gen_config = OmniVoiceGenerationConfig(
+            num_step=req.num_step if req.num_step is not None else 32,
+            guidance_scale=req.guidance_scale if req.guidance_scale is not None else 2.0,
+            class_temperature=req.class_temperature if req.class_temperature is not None else 0.0,
+            position_temperature=req.position_temperature if req.position_temperature is not None else 5.0,
+            t_shift=req.t_shift if req.t_shift is not None else 0.1,
+            layer_penalty_factor=req.layer_penalty_factor if req.layer_penalty_factor is not None else 5.0,
+            denoise=req.denoise if req.denoise is not None else True,
+        )
+
         # Chạy inference trong threadpool tách biệt, đồng thời bảo vệ qua inference_lock
         async with inference_lock:
             audios = await run_in_threadpool(
@@ -251,8 +331,10 @@ async def text_to_speech(req: TTSRequest):
                 voice_clone_prompt=prompt,
                 instruct=req.instruct,
                 speed=req.speed,
-                num_step=req.num_step,
+                duration=req.duration,
                 language=req.language,
+                normalize_text=req.normalize_text if req.normalize_text is not None else False,
+                generation_config=gen_config,
             )
 
         buffer = io.BytesIO()
@@ -270,8 +352,17 @@ async def clone_voice_direct(
     text: str = Form(..., description="Văn bản muốn đọc"),
     ref_audio: UploadFile = File(..., description="File audio mẫu"),
     ref_text: Optional[str] = Form(None, description="Transcript mẫu (tùy chọn)"),
+    instruct: Optional[str] = Form(None, description="Sắc thái giọng bổ trợ (vd: whisper)"),
     speed: Optional[float] = Form(1.0, description="Tốc độ đọc"),
-    num_step: Optional[int] = Form(32, description="Số bước (16-32)"),
+    duration: Optional[float] = Form(None, description="Thời lượng cố định (giây)"),
+    num_step: Optional[int] = Form(32, description="Số bước (16-48)"),
+    guidance_scale: Optional[float] = Form(2.0, description="CFG Guidance scale (1.0-5.0)"),
+    class_temperature: Optional[float] = Form(0.0, description="Độ ngẫu nhiên cảm xúc (0.0-1.0)"),
+    position_temperature: Optional[float] = Form(5.0, description="Nhiệt độ vị trí unmask"),
+    t_shift: Optional[float] = Form(0.1, description="Noise schedule t_shift"),
+    layer_penalty_factor: Optional[float] = Form(5.0, description="Layer penalty factor"),
+    denoise: Optional[bool] = Form(True, description="Lọc tạp âm với token <|denoise|>"),
+    normalize_text: Optional[bool] = Form(False, description="Chuẩn hóa văn bản"),
     language: Optional[str] = Form(None, description="Mã ngôn ngữ"),
 ):
     if not model:
@@ -291,15 +382,28 @@ async def clone_voice_direct(
             content = await ref_audio.read()
             tmp_file.write(content)
 
+        gen_config = OmniVoiceGenerationConfig(
+            num_step=num_step if num_step is not None else 32,
+            guidance_scale=guidance_scale if guidance_scale is not None else 2.0,
+            class_temperature=class_temperature if class_temperature is not None else 0.0,
+            position_temperature=position_temperature if position_temperature is not None else 5.0,
+            t_shift=t_shift if t_shift is not None else 0.1,
+            layer_penalty_factor=layer_penalty_factor if layer_penalty_factor is not None else 5.0,
+            denoise=denoise if denoise is not None else True,
+        )
+
         async with inference_lock:
             audios = await run_in_threadpool(
                 model.generate,
                 text=text,
                 ref_audio=tmp_path,
                 ref_text=ref_text,
+                instruct=instruct,
                 speed=speed,
-                num_step=num_step,
+                duration=duration,
                 language=language,
+                normalize_text=normalize_text if normalize_text is not None else False,
+                generation_config=gen_config,
             )
 
         buffer = io.BytesIO()

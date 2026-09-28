@@ -137,6 +137,28 @@
                 <i data-lucide="info" class="w-3.5 h-3.5"></i>
                 <span>Chưa có giọng nào? Hãy sang tab <a href="javascript:switchTab('voices')" class="text-indigo-400 underline">Kho Giọng & Cache</a> để tạo.</span>
               </p>
+
+              <!-- Optional Modifier for Cached Voice -->
+              <div class="mt-2.5 pt-2 border-t border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase font-medium">Sắc thái bổ trợ (Tùy chọn)</span>
+                  <select id="cachedVoiceModifier" onchange="onParamChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 mt-1">
+                    <option value="">Giữ nguyên giọng gốc</option>
+                    <option value="whisper">🤫 Thì thầm (Whisper)</option>
+                    <option value="low pitch">🔉 Trầm ấm hơn (Low pitch)</option>
+                    <option value="very low pitch">🔈 Rất trầm (Very low pitch)</option>
+                    <option value="high pitch">🔊 Cao giọng hơn (High pitch)</option>
+                    <option value="very high pitch">📢 Rất cao (Very high pitch)</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[10px] uppercase font-medium">Thời lượng cố định (Tùy chọn)</span>
+                  <div class="flex items-center space-x-1 mt-1">
+                    <input id="ttsDuration" type="number" min="0" step="0.5" placeholder="Để trống = Tự tính" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none">
+                    <span class="text-slate-500 text-xs">giây</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Mode 2: Voice Design Options -->
@@ -176,49 +198,152 @@
                     <option value="whisper">Thì thầm (Whisper)</option>
                     <option value="british accent">British accent</option>
                     <option value="american accent">American accent</option>
+                    <option value="australian accent">Australian accent</option>
+                    <option value="canadian accent">Canadian accent</option>
                   </select>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Text Input Area -->
+          <!-- Expressive Emotion & Style Presets -->
           <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl space-y-3">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Văn bản cần đọc</label>
-              <div class="flex items-center space-x-1.5">
-                <span class="text-[11px] text-slate-500">Chèn biểu cảm:</span>
-                <button type="button" onclick="insertTag('[laughter]')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">😂 Cười</button>
-                <button type="button" onclick="insertTag('[sigh]')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">😮‍💨 Thở dài</button>
+              <div class="flex items-center space-x-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-300">Cảm Xúc & Phong Cách (Presets)</label>
+              </div>
+              <span id="activePresetBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-semibold">
+                🎭 Truyền Cảm & Nhấn Nhá
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <button type="button" onclick="applyPreset('expressive')" id="presetBtn-expressive" class="preset-btn p-2.5 rounded-xl border border-indigo-500/60 bg-indigo-500/15 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all shadow-sm">
+                <span class="text-lg">🎭</span>
+                <span class="font-semibold text-center leading-tight">Truyền Cảm</span>
+                <span class="text-[9px] text-indigo-400/80">Khuyên dùng</span>
+              </button>
+              <button type="button" onclick="applyPreset('storyteller')" id="presetBtn-storyteller" class="preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <span class="text-lg">📖</span>
+                <span class="font-semibold text-center leading-tight">Kể Chuyện</span>
+                <span class="text-[9px] text-slate-500">Sâu lắng</span>
+              </button>
+              <button type="button" onclick="applyPreset('formal')" id="presetBtn-formal" class="preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <span class="text-lg">📰</span>
+                <span class="font-semibold text-center leading-tight">Tin Tức</span>
+                <span class="text-[9px] text-slate-500">Trang trọng</span>
+              </button>
+              <button type="button" onclick="applyPreset('whisper')" id="presetBtn-whisper" class="preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <span class="text-lg">🤫</span>
+                <span class="font-semibold text-center leading-tight">Thì Thầm</span>
+                <span class="text-[9px] text-slate-500">ASMR</span>
+              </button>
+              <button type="button" onclick="applyPreset('dramatic')" id="presetBtn-dramatic" class="preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <span class="text-lg">⚡</span>
+                <span class="font-semibold text-center leading-tight">Kịch Tính</span>
+                <span class="text-[9px] text-slate-500">Cảm xúc mạnh</span>
+              </button>
+              <button type="button" onclick="applyPreset('default')" id="presetBtn-default" class="preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all">
+                <span class="text-lg">⚖️</span>
+                <span class="font-semibold text-center leading-tight">Mặc Định</span>
+                <span class="text-[9px] text-slate-500">Normal</span>
+              </button>
+            </div>
+            <p id="presetDesc" class="text-[11px] text-slate-400 italic">
+              Biến thiên cao độ tự nhiên, giàu năng lượng, nhấn nhá biểu cảm rõ nét (Khuyên dùng).
+            </p>
+          </div>
+
+          <!-- Text Input Area -->
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
+                <span>Văn bản cần đọc</span>
+              </label>
+
+              <!-- Smart Assist Actions -->
+              <div class="flex items-center space-x-1.5 text-xs">
+                <button type="button" onclick="smartPunctuate('ttsTextInput')" title="Tự động thêm dấu phẩy ngắt nghỉ tại các liên từ thích hợp để lấy hơi tự nhiên" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 flex items-center space-x-1 transition-all">
+                  <i data-lucide="sparkles" class="w-3 h-3 text-amber-400"></i>
+                  <span class="text-[11px] font-medium">Tự động ngắt nghỉ</span>
+                </button>
+                <button type="button" onclick="cleanTags('ttsTextInput')" title="Xóa các thẻ [laughter], [sigh]... khỏi văn bản" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors text-[11px]">
+                  <i data-lucide="eraser" class="w-3 h-3"></i>
+                </button>
               </div>
             </div>
 
-            <textarea id="ttsTextInput" rows="5" placeholder="Nhập đoạn văn bản bạn muốn chuyển thành giọng nói tại đây (Hỗ trợ tiếng Việt, tiếng Anh và 600+ ngôn ngữ khác)..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-y">Xin chào! Đây là hệ thống tạo giọng nói OmniVoice chạy hoàn toàn trên máy cục bộ của bạn.</textarea>
+            <!-- Toolbar: Pauses & Cadence + Emotion Tags -->
+            <div class="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-2 text-xs">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 flex items-center space-x-1 mr-1">
+                  <i data-lucide="pause-circle" class="w-3 h-3 text-cyan-400"></i>
+                  <span>Ngắt nghỉ & Nhấn giọng:</span>
+                </span>
+                <button type="button" onclick="insertTag(', ', 'ttsTextInput')" title="Nghỉ ngắn tự nhiên ~0.3s" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-1 rounded-lg border border-slate-700/80 font-mono">
+                  , (Nghỉ ngắn)
+                </button>
+                <button type="button" onclick="insertTag('... ', 'ttsTextInput')" title="Nghỉ dài ngập ngừng ~0.6s" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-1 rounded-lg border border-slate-700/80 font-mono">
+                  ... (Nghỉ dài)
+                </button>
+                <button type="button" onclick="insertTag(' — ', 'ttsTextInput')" title="Ngắt nhấn mạnh câu" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-1 rounded-lg border border-slate-700/80 font-mono">
+                  — (Nhấn ngắt)
+                </button>
+                <button type="button" onclick="insertTag('? ', 'ttsTextInput')" title="Lên giọng hỏi cuối câu" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-1 rounded-lg border border-slate-700/80 font-mono font-bold">
+                  ? (Hỏi)
+                </button>
+                <button type="button" onclick="insertTag('! ', 'ttsTextInput')" title="Cảm thán dứt khoát" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-1 rounded-lg border border-slate-700/80 font-mono font-bold">
+                  ! (Cảm thán)
+                </button>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-800/60">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 flex items-center space-x-1 mr-1">
+                  <i data-lucide="smile" class="w-3 h-3 text-amber-400"></i>
+                  <span>Thẻ biểu cảm:</span>
+                </span>
+                <button type="button" onclick="insertTag('[laughter] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">😂 Cười</button>
+                <button type="button" onclick="insertTag('[sigh] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">😮‍💨 Thở dài</button>
+                <button type="button" onclick="insertTag('[surprise-ah] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">😲 Á!</button>
+                <button type="button" onclick="insertTag('[surprise-oh] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">😯 Ồ!</button>
+                <button type="button" onclick="insertTag('[surprise-wa] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">🎉 Oa!</button>
+                <button type="button" onclick="insertTag('[question-ah] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">🤔 À?</button>
+                <button type="button" onclick="insertTag('[dissatisfaction-hnn] ', 'ttsTextInput')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-700/80">😤 Hừm</button>
+              </div>
+            </div>
+
+            <textarea id="ttsTextInput" rows="4" placeholder="Nhập đoạn văn bản bạn muốn chuyển thành giọng nói tại đây (Hỗ trợ tiếng Việt, tiếng Anh và 600+ ngôn ngữ khác)..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-y">Xin chào! Đây là hệ thống tạo giọng nói OmniVoice, đã được nâng cấp tham số để đọc truyền cảm, có nhấn nhá và ngắt nghỉ tự nhiên.</textarea>
 
             <!-- Parameters (Speed, Steps, Language) -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
               <div>
                 <div class="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Tốc độ đọc</span>
+                  <span>Tốc độ đọc (Speed)</span>
                   <span id="speedVal" class="text-indigo-400 font-semibold">1.0x</span>
                 </div>
-                <input id="ttsSpeed" type="range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="document.getElementById('speedVal').innerText = this.value + 'x'" class="w-full accent-indigo-500 cursor-pointer">
+                <input id="ttsSpeed" type="range" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('speedVal').innerText = parseFloat(this.value).toFixed(2) + 'x'; onParamChange()" class="w-full accent-indigo-500 cursor-pointer">
               </div>
 
               <div>
                 <div class="flex justify-between text-xs text-slate-400 mb-1">
                   <span>Độ chi tiết (Steps)</span>
-                  <span id="stepVal" class="text-indigo-400 font-semibold">32</span>
+                  <span id="stepVal" class="text-indigo-400 font-semibold">36</span>
                 </div>
-                <select id="ttsSteps" onchange="document.getElementById('stepVal').innerText = this.value" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
-                  <option value="32" selected>32 bước (Chất lượng cao)</option>
+                <select id="ttsSteps" onchange="document.getElementById('stepVal').innerText = this.value; onParamChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
                   <option value="16">16 bước (Nhanh gấp đôi)</option>
+                  <option value="24">24 bước (Cân bằng tốc độ)</option>
+                  <option value="32">32 bước (Chuẩn gốc)</option>
+                  <option value="36" selected>36 bước (Truyền cảm - Khuyên dùng)</option>
+                  <option value="40">40 bước (Sâu lắng / Kể chuyện)</option>
+                  <option value="48">48 bước (Chi tiết tối đa)</option>
                 </select>
               </div>
 
               <div>
                 <div class="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Ngôn ngữ</span>
+                  <span>Ngôn ngữ (Language)</span>
                 </div>
                 <select id="ttsLang" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
                   <option value="">Tự động nhận diện</option>
@@ -228,6 +353,89 @@
                   <option value="ja">Japanese (ja)</option>
                   <option value="ko">Korean (ko)</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Advanced Tuning Accordion -->
+            <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button type="button" onclick="toggleAdvancedSettings()" class="w-full px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white flex items-center justify-between transition-colors bg-slate-900/40">
+                <span class="flex items-center space-x-1.5">
+                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span>Tùy chỉnh Tham số Sinh âm Nâng cao (CFG Scale, Temperature...)</span>
+                </span>
+                <i id="advIcon" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+              </button>
+
+              <div id="advSettingsPanel" class="p-3.5 space-y-3.5 border-t border-slate-800/80 hidden">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <!-- CFG Guidance Scale -->
+                  <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                      <span class="font-medium flex items-center space-x-1">
+                        <span>CFG Guidance Scale</span>
+                        <span title="Khuếch đại độ bám sát biểu cảm của giọng mẫu và instruct" class="text-slate-500 cursor-help">ℹ️</span>
+                      </span>
+                      <span id="guidanceVal" class="text-indigo-400 font-mono font-semibold">2.8</span>
+                    </div>
+                    <input id="ttsGuidance" type="range" min="1.0" max="5.0" step="0.1" value="2.8" oninput="document.getElementById('guidanceVal').innerText = parseFloat(this.value).toFixed(1); onParamChange()" class="w-full accent-indigo-500 cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-0.5">
+                      <span>1.0 (Nhẹ)</span>
+                      <span class="text-indigo-400 font-medium">2.6 - 3.2 (Cảm xúc cao)</span>
+                      <span>5.0 (Cực đại)</span>
+                    </div>
+                  </div>
+
+                  <!-- Class Temperature -->
+                  <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                      <span class="font-medium flex items-center space-x-1">
+                        <span>Độ ngẫu nhiên cảm xúc (Temperature)</span>
+                        <span title="0 = Đọc phẳng/máy móc. 0.25-0.45 = Giọng sống động, biến thiên cao độ tự nhiên" class="text-slate-500 cursor-help">ℹ️</span>
+                      </span>
+                      <span id="tempVal" class="text-indigo-400 font-mono font-semibold">0.35</span>
+                    </div>
+                    <input id="ttsClassTemp" type="range" min="0.0" max="0.8" step="0.05" value="0.35" oninput="document.getElementById('tempVal').innerText = parseFloat(this.value).toFixed(2); onParamChange()" class="w-full accent-indigo-500 cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-0.5">
+                      <span>0.0 (Phẳng / Greedy)</span>
+                      <span class="text-indigo-400 font-medium">0.30 - 0.45 (Giàu cảm xúc)</span>
+                      <span>0.8 (Đột biến)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/60">
+                  <!-- Position Temperature -->
+                  <div>
+                    <div class="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Position Temperature</span>
+                      <span id="posTempVal" class="text-slate-300 font-mono">5.0</span>
+                    </div>
+                    <input id="ttsPosTemp" type="range" min="0.0" max="10.0" step="0.5" value="5.0" oninput="document.getElementById('posTempVal').innerText = parseFloat(this.value).toFixed(1); onParamChange()" class="w-full accent-indigo-500 cursor-pointer">
+                  </div>
+
+                  <!-- Time-step Shift (t_shift) -->
+                  <div>
+                    <div class="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Noise Time-shift (t_shift)</span>
+                      <span id="tShiftVal" class="text-slate-300 font-mono">0.10</span>
+                    </div>
+                    <input id="ttsTShift" type="range" min="0.01" max="0.5" step="0.01" value="0.10" oninput="document.getElementById('tShiftVal').innerText = parseFloat(this.value).toFixed(2); onParamChange()" class="w-full accent-indigo-500 cursor-pointer">
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60 text-xs text-slate-300">
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                    <input id="ttsDenoise" type="checkbox" checked onchange="onParamChange()" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-900">
+                    <span>Lọc sạch tạp âm (Denoise Token)</span>
+                  </label>
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                    <input id="ttsNormalize" type="checkbox" onchange="onParamChange()" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-900">
+                    <span>Chuẩn hóa đọc số / ngày tháng (Text Norm)</span>
+                  </label>
+                  <button type="button" onclick="resetAdvancedToDefault()" class="text-xs text-indigo-400 hover:text-indigo-300">
+                    Khôi phục gốc
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -472,13 +680,49 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Văn bản cần đọc *</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-medium text-slate-300">Văn bản cần đọc *</label>
+              <button type="button" onclick="smartPunctuate('directText')" title="Tự động thêm dấu phẩy ngắt nghỉ tại các liên từ" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                <i data-lucide="sparkles" class="w-3 h-3 text-amber-400"></i>
+                <span>Tự động ngắt nghỉ</span>
+              </button>
+            </div>
+
+            <!-- Toolbar: Pauses & Cadence + Emotion Tags for Direct Clone -->
+            <div class="mb-2 p-2 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-1.5 text-xs">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-[10px] uppercase font-semibold text-slate-400 mr-1">Ngắt nghỉ:</span>
+                <button type="button" onclick="insertTag(', ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700/80 font-mono">, (0.3s)</button>
+                <button type="button" onclick="insertTag('... ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700/80 font-mono">... (0.6s)</button>
+                <button type="button" onclick="insertTag(' — ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700/80 font-mono">—</button>
+                <button type="button" onclick="insertTag('? ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700/80 font-mono font-bold">?</button>
+                <button type="button" onclick="insertTag('! ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700/80 font-mono font-bold">!</button>
+                <span class="text-slate-600">|</span>
+                <button type="button" onclick="insertTag('[laughter] ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80">😂</button>
+                <button type="button" onclick="insertTag('[sigh] ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80">😮‍💨</button>
+                <button type="button" onclick="insertTag('[surprise-ah] ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80">😲</button>
+                <button type="button" onclick="insertTag('[surprise-wa] ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80">🎉</button>
+                <button type="button" onclick="insertTag('[question-ah] ', 'directText')" class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700/80">🤔</button>
+              </div>
+            </div>
+
             <textarea id="directText" rows="3" placeholder="Nhập câu muốn giọng mẫu nói..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none">Xin chào, đây là tính năng nhân bản giọng nói trực tiếp từ file mẫu.</textarea>
           </div>
 
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Transcript của file mẫu (Tùy chọn)</label>
-            <input id="directRefText" type="text" placeholder="Bỏ trống để Whisper tự nhận diện..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Transcript của file mẫu (Tùy chọn)</label>
+              <input id="directRefText" type="text" placeholder="Bỏ trống để Whisper tự nhận diện..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Sắc thái bổ trợ (Tùy chọn)</label>
+              <select id="directModifier" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none">
+                <option value="">Giữ nguyên giọng gốc</option>
+                <option value="whisper">Thì thầm (Whisper)</option>
+                <option value="low pitch">Trầm ấm hơn (Low pitch)</option>
+                <option value="high pitch">Cao giọng hơn (High pitch)</option>
+              </select>
+            </div>
           </div>
 
           <button id="btnDirectClone" onclick="submitDirectClone()" class="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white rounded-xl font-semibold text-sm shadow-md flex items-center justify-center space-x-2">
@@ -520,13 +764,16 @@
           </div>
           <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codePython">import requests
 
-# 1. Sinh âm thanh bằng giọng đã lưu trong Cache
+# 1. Sinh âm thanh truyền cảm bằng giọng đã lưu trong Cache
 response = requests.post(
     "http://localhost:8000/tts",
     json={
-        "text": "Xin chào thế giới!",
-        "voice_id": "giong_mc_nam", # Thay bằng voice_id của bạn
-        "speed": 1.0
+        "text": "Xin chào! Đây là đoạn đọc rất truyền cảm, có nhấn nhá tự nhiên.",
+        "voice_id": "lan_phuong",       # ID giọng trong cache
+        "speed": 1.0,                   # Tốc độ đọc
+        "num_step": 36,                 # 36 bước unmasking chất lượng cao
+        "guidance_scale": 2.8,          # CFG: 2.6 - 3.2 ép sắc thái biểu cảm mạnh
+        "class_temperature": 0.35,      # 0.25 - 0.45 biến thiên cao độ tự nhiên
     }
 )
 
@@ -547,18 +794,25 @@ print("Đã lưu file output.wav!")</code></pre>
               <span>Copy</span>
             </button>
           </div>
-          <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codeJS">async function playSpeech(text, voiceId = "giong_mc_nam") {
+          <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codeJS">async function playSpeech(text, voiceId = "lan_phuong") {
   const res = await fetch("http://localhost:8000/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice_id: voiceId, speed: 1.0 })
+    body: JSON.stringify({
+      text,
+      voice_id: voiceId,
+      speed: 1.0,
+      num_step: 36,
+      guidance_scale: 2.8,
+      class_temperature: 0.35
+    })
   });
   const blob = await res.blob();
   const audio = new Audio(URL.createObjectURL(blob));
   audio.play();
 }
 
-playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
+playSpeech("Chào bạn, tôi là trợ lý AI với giọng đọc truyền cảm!");</code></pre>
         </div>
 
         <!-- Code Snippet: cURL -->
@@ -575,7 +829,13 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
           </div>
           <pre class="p-4 text-xs font-mono text-slate-300 overflow-x-auto bg-slate-950/50"><code id="codeCurl">curl -X POST http://localhost:8000/tts \
   -H "Content-Type: application/json" \
-  -d '{"text": "Xin chào từ cURL!", "voice_id": "giong_mc_nam"}' \
+  -d '{
+    "text": "Xin chào từ cURL! Giọng đọc giàu cảm xúc.",
+    "voice_id": "lan_phuong",
+    "num_step": 36,
+    "guidance_scale": 2.8,
+    "class_temperature": 0.35
+  }' \
   --output ket_qua.wav</code></pre>
         </div>
       </div>
@@ -670,14 +930,183 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       }
     }
 
-    // Chèn tag biểu cảm
-    function insertTag(tag) {
-      const textarea = document.getElementById('ttsTextInput');
+    // Preset Cảm Xúc & Phong Cách
+    const EMOTION_PRESETS = {
+      expressive: {
+        badge: "🎭 Truyền Cảm & Nhấn Nhá",
+        desc: "Biến thiên cao độ tự nhiên, giàu năng lượng, nhấn nhá biểu cảm rõ nét (Khuyên dùng).",
+        guidance: 2.8,
+        temp: 0.35,
+        steps: 36,
+        speed: 1.0,
+        modifier: ""
+      },
+      storyteller: {
+        badge: "📖 Kể Chuyện / Tâm Sự",
+        desc: "Giọng đọc trầm ấm, nhịp ngắt sâu lắng, truyền cảm hứng cho sách nói, podcast.",
+        guidance: 2.5,
+        temp: 0.40,
+        steps: 40,
+        speed: 0.95,
+        modifier: ""
+      },
+      formal: {
+        badge: "📰 Tin Tức / Trang Trọng",
+        desc: "Phát âm chuẩn xác, rõ ràng, dứt khoát, phong thái phát thanh viên thời sự.",
+        guidance: 2.2,
+        temp: 0.15,
+        steps: 32,
+        speed: 1.0,
+        modifier: ""
+      },
+      whisper: {
+        badge: "🤫 Thì Thầm / Tâm Tình",
+        desc: "Giọng thì thầm êm dịu, gần gũi, phong cách ASMR / tâm sự đêm khuya.",
+        guidance: 3.2,
+        temp: 0.30,
+        steps: 36,
+        speed: 1.0,
+        modifier: "whisper"
+      },
+      dramatic: {
+        badge: "⚡ Kịch Tính / Cảm Xúc Mạnh",
+        desc: "Cường độ biểu cảm cao, ngữ điệu kịch tính, nhịp nhanh và sắc sảo.",
+        guidance: 3.5,
+        temp: 0.45,
+        steps: 48,
+        speed: 1.05,
+        modifier: ""
+      },
+      default: {
+        badge: "⚖️ Mặc Định (Normal)",
+        desc: "Cấu hình gốc của OmniVoice (Greedy decoding, trung tính).",
+        guidance: 2.0,
+        temp: 0.00,
+        steps: 32,
+        speed: 1.0,
+        modifier: ""
+      }
+    };
+
+    let activePreset = 'expressive';
+
+    function applyPreset(presetKey) {
+      const p = EMOTION_PRESETS[presetKey];
+      if (!p) return;
+      activePreset = presetKey;
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.className = 'preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all';
+      });
+      const targetBtn = document.getElementById('presetBtn-' + presetKey);
+      if (targetBtn) {
+        targetBtn.className = 'preset-btn p-2.5 rounded-xl border border-indigo-500/60 bg-indigo-500/15 text-indigo-300 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all shadow-sm';
+      }
+
+      document.getElementById('activePresetBadge').innerText = p.badge;
+      document.getElementById('presetDesc').innerText = p.desc;
+
+      document.getElementById('ttsGuidance').value = p.guidance;
+      document.getElementById('guidanceVal').innerText = p.guidance.toFixed(1);
+
+      document.getElementById('ttsClassTemp').value = p.temp;
+      document.getElementById('tempVal').innerText = p.temp.toFixed(2);
+
+      document.getElementById('ttsSteps').value = p.steps;
+      document.getElementById('stepVal').innerText = p.steps;
+
+      document.getElementById('ttsSpeed').value = p.speed;
+      document.getElementById('speedVal').innerText = p.speed.toFixed(2) + 'x';
+
+      if (p.modifier && document.getElementById('cachedVoiceModifier')) {
+        document.getElementById('cachedVoiceModifier').value = p.modifier;
+      }
+    }
+
+    function onParamChange() {
+      activePreset = 'custom';
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.className = 'preset-btn p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:border-slate-700 font-medium text-xs flex flex-col items-center justify-center space-y-1 transition-all';
+      });
+      document.getElementById('activePresetBadge').innerText = '⚙️ Tùy Chỉnh (Custom)';
+      document.getElementById('presetDesc').innerText = 'Bạn đang sử dụng các thông số tự điều chỉnh thủ công.';
+    }
+
+    function toggleAdvancedSettings() {
+      const panel = document.getElementById('advSettingsPanel');
+      const icon = document.getElementById('advIcon');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+      } else {
+        panel.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+      }
+    }
+
+    function resetAdvancedToDefault() {
+      applyPreset('expressive');
+      document.getElementById('ttsPosTemp').value = 5.0;
+      document.getElementById('posTempVal').innerText = '5.0';
+      document.getElementById('ttsTShift').value = 0.10;
+      document.getElementById('tShiftVal').innerText = '0.10';
+      document.getElementById('ttsDenoise').checked = true;
+      document.getElementById('ttsNormalize').checked = false;
+      showToast('Đã khôi phục cài đặt đề xuất (Truyền cảm)', 'info');
+    }
+
+    // Chèn ký tự / thẻ biểu cảm tại vị trí con trỏ
+    function insertTag(tag, targetId = 'ttsTextInput') {
+      const textarea = document.getElementById(targetId) || document.getElementById('ttsTextInput');
+      if (!textarea) return;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       const text = textarea.value;
-      textarea.value = text.substring(0, start) + tag + ' ' + text.substring(end);
+      textarea.value = text.substring(0, start) + tag + text.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
       textarea.focus();
+    }
+
+    // Tự động ngắt nghỉ thông minh
+    function smartPunctuate(targetId = 'ttsTextInput') {
+      const textarea = document.getElementById(targetId);
+      if (!textarea) return;
+      let text = textarea.value;
+      if (!text.trim()) return;
+
+      const conjunctionsVi = [
+        "tuy nhiên", "nhưng mà", "thế nhưng", "bởi vì", "do đó", "vì vậy",
+        "đồng thời", "mặt khác", "hơn nữa", "ngoài ra", "cho nên", "mặc dù",
+        "tóm lại", "đặc biệt", "chính vì thế", "nhưng", "và rồi"
+      ];
+      let count = 0;
+
+      conjunctionsVi.forEach(conj => {
+        const regex = new RegExp(`(?<![,!?:;\\.\\—\\-]\\s*)(?<=\\b[\\w\\p{L}]+)\\s+(${conj})\\b`, 'gui');
+        text = text.replace(regex, (match, p1) => {
+          count++;
+          return `, ${p1}`;
+        });
+      });
+
+      text = text.trim();
+      if (text && !/[.!?…]$/.test(text)) {
+        text += '.';
+        count++;
+      }
+
+      textarea.value = text;
+      showToast(`Đã tối ưu ${count} điểm ngắt nghỉ tự nhiên!`, 'success');
+    }
+
+    // Xóa thẻ tag biểu cảm
+    function cleanTags(targetId = 'ttsTextInput') {
+      const textarea = document.getElementById(targetId);
+      if (!textarea) return;
+      let text = textarea.value;
+      text = text.replace(/\[[^\]]+\]\s*/g, '').trim();
+      textarea.value = text;
+      showToast('Đã dọn dẹp các thẻ biểu cảm', 'info');
     }
 
     // Tải danh sách giọng
@@ -1400,11 +1829,31 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
         return;
       }
 
+      const speed = parseFloat(document.getElementById('ttsSpeed').value) || 1.0;
+      const numStep = parseInt(document.getElementById('ttsSteps').value) || 36;
+      const guidanceScale = parseFloat(document.getElementById('ttsGuidance').value) || 2.8;
+      const classTemp = parseFloat(document.getElementById('ttsClassTemp').value) || 0.0;
+      const posTemp = parseFloat(document.getElementById('ttsPosTemp').value) || 5.0;
+      const tShift = parseFloat(document.getElementById('ttsTShift').value) || 0.10;
+      const denoise = document.getElementById('ttsDenoise') ? document.getElementById('ttsDenoise').checked : true;
+      const normalizeText = document.getElementById('ttsNormalize') ? document.getElementById('ttsNormalize').checked : false;
+      const durationVal = parseFloat(document.getElementById('ttsDuration').value);
+
       const payload = {
         text: text,
-        speed: parseFloat(document.getElementById('ttsSpeed').value) || 1.0,
-        num_step: parseInt(document.getElementById('ttsSteps').value) || 32,
+        speed: speed,
+        num_step: numStep,
+        guidance_scale: guidanceScale,
+        class_temperature: classTemp,
+        position_temperature: posTemp,
+        t_shift: tShift,
+        denoise: denoise,
+        normalize_text: normalizeText,
       };
+
+      if (!isNaN(durationVal) && durationVal > 0) {
+        payload.duration = durationVal;
+      }
 
       const lang = document.getElementById('ttsLang').value;
       if (lang) payload.language = lang;
@@ -1416,6 +1865,12 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
           return;
         }
         payload.voice_id = voiceId;
+
+        // Bổ sung sắc thái bổ trợ cho giọng cloned nếu người dùng chọn
+        const modifier = document.getElementById('cachedVoiceModifier') ? document.getElementById('cachedVoiceModifier').value : '';
+        if (modifier) {
+          payload.instruct = modifier;
+        }
       } else if (currentTTSMode === 'design') {
         const gender = document.getElementById('vdGender').value;
         const age = document.getElementById('vdAge').value;
@@ -1468,8 +1923,9 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
         dlBtn.href = audioUrl;
         dlBtn.download = `omnivoice_${Date.now()}.wav`;
 
-        // Thêm vào lịch sử
-        addToHistory(text, audioUrl, elapsed, payload.voice_id || 'Voice Design');
+        // Thêm vào lịch sử kèm thông tin preset
+        const voiceLabel = payload.voice_id ? `🎙️ ${payload.voice_id}` : (payload.instruct ? `✨ ${payload.instruct}` : 'Auto Voice');
+        addToHistory(text, audioUrl, elapsed, `${voiceLabel} (${activePreset})`);
         showToast(`Tạo thành công sau ${elapsed}s!`, 'success');
 
       } catch (e) {
@@ -1497,7 +1953,7 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       container.innerHTML = generationHistory.map((item, idx) => `
         <div class="p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5 text-xs">
           <div class="flex items-center justify-between text-[11px] text-slate-400">
-            <span class="font-medium text-indigo-400">🎙️ ${item.voice}</span>
+            <span class="font-medium text-indigo-400">${item.voice}</span>
             <span>${item.time}s • ${item.timestamp}</span>
           </div>
           <p class="text-slate-200 line-clamp-1 italic">"${item.text}"</p>
@@ -1516,6 +1972,7 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       const fileInput = document.getElementById('directAudioFile');
       const text = document.getElementById('directText').value.trim();
       const refText = document.getElementById('directRefText').value.trim();
+      const modifier = document.getElementById('directModifier') ? document.getElementById('directModifier').value : '';
       const btn = document.getElementById('btnDirectClone');
 
       if (!fileInput.files || !fileInput.files[0]) {
@@ -1539,6 +1996,12 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
       }
 
       if (refText) formData.append('ref_text', refText);
+      if (modifier) formData.append('instruct', modifier);
+
+      // Gửi kèm các tham số thế hệ để tạo giọng clone cảm xúc
+      formData.append('guidance_scale', document.getElementById('ttsGuidance') ? document.getElementById('ttsGuidance').value : '2.8');
+      formData.append('class_temperature', document.getElementById('ttsClassTemp') ? document.getElementById('ttsClassTemp').value : '0.35');
+      formData.append('num_step', document.getElementById('ttsSteps') ? document.getElementById('ttsSteps').value : '36');
 
       btn.disabled = true;
       btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang xử lý và clone giọng...</span>';
@@ -1657,6 +2120,7 @@ playSpeech("Chào bạn, tôi là trợ lý AI!");</code></pre>
     checkHealth();
     loadVoicesList();
     initTrimmers();
+    applyPreset('expressive');
   </script>
 </body>
 </html>
